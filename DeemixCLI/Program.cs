@@ -1,4 +1,13 @@
 ﻿using Deemix;
 
-var deemix = await DeemixClient.Create("notavalidarl");
-deemix.Download("", "");
+namespace DeemixCLI
+{
+    internal class Program
+    {
+        static async Task Main(string[] args)
+        {
+            var a = await DeemixClient.Create("");
+            await a.Download("", "");
+        }
+    }
+}
