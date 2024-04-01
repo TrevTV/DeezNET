@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using DeezNET.Data;
+using Newtonsoft.Json.Linq;
 using System.Text;
 
 namespace DeezNET
@@ -33,7 +34,7 @@ namespace DeezNET
 
         // TODO: a bunch of stuff i don't feel like implementing right now
 
-        public async Task<JToken> GetTrackPage(int songId) => await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId });
+        public async Task<TrackPage> GetTrackPage(int songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId })).ToObject<TrackPage>()!;
 
         private async Task<JToken> Call(string method, JObject? args = null, Dictionary<string, string>? parameters = null, bool needsArl = false)
         {

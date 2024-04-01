@@ -25,8 +25,7 @@ public class DeezerClient
 
     public async Task DownloadToFile(string url, string downloadPath)
     {
-        var page = await _api.GetTrackPage(1903638027);
-        Console.WriteLine("GOOD!");
+        TrackPage page = await _api.GetTrackPage(1903638027);
 
         return;
         FileStream stream = new(@"C:\Users\trevo\Desktop\encrypted.flac", FileMode.Open);
