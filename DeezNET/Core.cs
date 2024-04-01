@@ -1,4 +1,8 @@
 ﻿using DeezNET.Data;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Security.Authentication;
 using System.Text;
 
 namespace DeezNET;
@@ -17,24 +21,30 @@ public class DeezerClient
         _bitrate = bitrate;
         _client = new HttpClient();
         _api = new(_client, arl);
+        _arl = arl;
     }
 
     private Bitrate _bitrate;
     private HttpClient _client;
     private GWApi _api;
+    private string _arl;
 
     public async Task DownloadToFile(string url, string downloadPath)
     {
-        TrackPage page = await _api.GetTrackPage(1903638027);
+        TrackPage page = await _api.GetTrackPage(401934352);
+        TrackUrls urls = await GetTrackUrl(page.Data.TrackToken);
 
-        return;
-        FileStream stream = new(@"C:\Users\trevo\Desktop\encrypted.flac", FileMode.Open);
+        Uri encryptedUri = urls.Data.First().Media.First().Sources.First().Url;
+
+        HttpRequestMessage message = new(HttpMethod.Get, encryptedUri);
+        HttpResponseMessage response = await _client.SendAsync(message);
+        Stream stream = await response.Content.ReadAsStreamAsync();
+
         FileStream stream2 = new(@"C:\Users\trevo\Desktop\out.flac", FileMode.Create);
 
-        string blowfishKey = Decryption.GenerateBlowfishKey("1903638027"); // track id, public info
+        string blowfishKey = Decryption.GenerateBlowfishKey("401934352"); // track id, public info
 
-        // TODO: Crypted
-        bool isCrypted = true;
+        bool isCrypted = encryptedUri.ToString().Contains("/mobile/") || encryptedUri.ToString().Contains("/media/");
 
         bool isStart = true;
 
@@ -64,5 +74,51 @@ public class DeezerClient
 
             stream2.Write(buffer, 0, buffer.Length);
         }
+    }
+
+    private async Task<TrackUrls> GetTrackUrl(string token)
+    {
+        GetUrlRequestBody reqData = new()
+        {
+            LicenseToken = _api.ActiveUserData["USER"]!["OPTIONS"]!["license_token"]!.ToString(),
+            TrackTokens = [token],
+            Media =
+            [
+                new()
+                {
+                    Type = "FULL",
+                    Formats = [
+                        new()
+                        {
+                            Cipher = "BF_CBC_STRIPE",
+                            FormatFormat = _bitrate.ToString()
+                        }
+                    ]
+                }
+            ]
+        };
+
+        string reqDataSerialized = JsonConvert.SerializeObject(reqData);
+        StringContent stringContent = new(reqDataSerialized);
+
+        HttpRequestMessage request = new(HttpMethod.Post, "https://media.deezer.com/v1/get_url")
+        {
+            Content = stringContent
+        };
+
+        request.Headers.Add("Cookie", "arl=" + _arl);
+
+        HttpResponseMessage response = await _client.SendAsync(request);
+
+        string resp = await response.Content.ReadAsStringAsync();
+        JObject json = JObject.Parse(resp);
+
+        JToken? errors = json["errors"];
+        if (errors != null && errors.Any())
+        {
+            throw new Exception(errors[0]!["message"]!.ToString());
+        }
+
+        return json.ToObject<TrackUrls>()!;
     }
 }

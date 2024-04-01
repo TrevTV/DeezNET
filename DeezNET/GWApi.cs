@@ -13,17 +13,22 @@ namespace DeezNET
             _apiToken = "null"; // this doesn't necessarily need to be null; used for deezer.getUserData
         }
 
+        public JToken ActiveUserData { get => _activeUserData; }
+
         private HttpClient _client;
         private string _arl;
         private string _apiToken;
+        private JToken _activeUserData;
 
         internal async Task SetToken()
         {
             JToken userData = await GetUserData();
+            _activeUserData = userData;
             _apiToken = userData["checkForm"]!.ToString();
         }
 
-        public async Task<JToken> GetUserData() => await Call("deezer.getUserData");
+        // the UserData json response is cursed to the point where using a JToken directly is a better solution
+        public async Task<JToken> GetUserData() => await Call("deezer.getUserData", needsArl: true);
 
         public async Task<JToken> GetUserProfilePage(int userId, int tab, int limit = 10) => await Call("deezer.getUserProfilePage", new()
         {
