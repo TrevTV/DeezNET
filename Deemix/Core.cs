@@ -1,11 +1,4 @@
 ﻿using Deemix.Data;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Crypto.Engines;
-using Org.BouncyCastle.Crypto.Modes;
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Security;
-using System.Net;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Deemix;
@@ -15,21 +8,15 @@ public class DeemixClient
     public static async Task<DeemixClient> Create(string arl, Bitrate bitrate = Bitrate.MP3_320)
     {
         DeemixClient client = new(arl, bitrate);
-
-        await client._api.SetToken();
-
+        //await client._api.SetToken();
         return client;
     }
 
     private DeemixClient(string arl, Bitrate bitrate)
     {
         _bitrate = bitrate;
-
-        HttpClientHandler handler = new() { UseCookies = false };
-        _client = new HttpClient(handler);
-        _client.DefaultRequestHeaders.Add("Cookie", "arl=" + arl);
-
-        _api = new(_client);
+        _client = new HttpClient();
+        _api = new(_client, arl);
     }
 
     private Bitrate _bitrate;
@@ -38,6 +25,10 @@ public class DeemixClient
 
     public async Task Download(string url, string downloadPath)
     {
+        var page = await _api.GetTrackPage(1903638027);
+        Console.WriteLine("GOOD!");
+
+        return;
         FileStream stream = new(@"C:\Users\trevo\Desktop\encrypted.flac", FileMode.Open);
         FileStream stream2 = new(@"C:\Users\trevo\Desktop\out.flac", FileMode.Create);
 
@@ -75,6 +66,4 @@ public class DeemixClient
             stream2.Write(buffer, 0, buffer.Length);
         }
     }
-
-
 }

@@ -5,13 +5,15 @@ namespace Deemix
 {
     public class GWApi
     {
-        internal GWApi(HttpClient client)
+        internal GWApi(HttpClient client, string arl)
         {
             _client = client;
+            _arl = arl;
             _apiToken = "null"; // this doesn't necessarily need to be null; used for deezer.getUserData
         }
 
         private HttpClient _client;
+        private string _arl;
         private string _apiToken;
 
         internal async Task SetToken()
@@ -31,20 +33,20 @@ namespace Deemix
 
         // TODO: a bunch of stuff i don't feel like implementing right now
 
-        public async Task<JToken> GetTrackPage(int songId) => await Call("deezer.getTrackPage", new() { ["SNG_ID"] = songId });
+        public async Task<JToken> GetTrackPage(int songId) => await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId });
 
-        private async Task<JToken> Call(string method, JObject? args = null, Dictionary<string, string>? parameters = null)
+        private async Task<JToken> Call(string method, JObject? args = null, Dictionary<string, string>? parameters = null, bool needsArl = false)
         {
             parameters ??= [];
-            parameters.Add("api_version", "1.0");
-            parameters.Add("api_token", _apiToken);
-            parameters.Add("input", "3");
-            parameters.Add("method", method);
+            parameters["api_version"] = "1.0";
+            parameters["api_token"] = _apiToken;
+            parameters["input"] = "3";
+            parameters["method"] = method;
 
             string body = args == null ? "" : args.ToString();
             StringContent stringContent = new(body);
 
-            StringBuilder stringBuilder = new("http://www.deezer.com/ajax/gw-light.php");
+            StringBuilder stringBuilder = new("https://www.deezer.com/ajax/gw-light.php");
             for (int i = 0; i < parameters.Count; i++)
             {
                 string start = i == 0 ? "?" : "&";
@@ -58,21 +60,25 @@ namespace Deemix
                 Content = stringContent
             };
 
+            if (needsArl)
+                request.Headers.Add("Cookie", "arl=" + _arl);
+
             HttpResponseMessage response = await _client.SendAsync(request);
 
             string resp = await response.Content.ReadAsStringAsync();
             JObject json = JObject.Parse(resp);
 
-            if (json["error"]!.Any())
+            JToken? error = json["error"];
+            if (error != null && error.Any())
             {
-                if (json["error"]!["VALID_TOKEN_REQUIED"] != null || json["error"]!["GATEWAY_ERROR"] != null)
+                if (error["VALID_TOKEN_REQUIRED"] != null || error["GATEWAY_ERROR"] != null)
                 {
                     await SetToken();
                     return await Call(method, args, parameters);
                 }
                 else
                     // TODO: make this a custom exception
-                    throw new Exception(json["error"]!.ToString());
+                    throw new Exception(error.ToString());
             }
 
             return json["results"]!;
