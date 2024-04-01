@@ -23,7 +23,7 @@ public class DeemixClient
     private HttpClient _client;
     private GWApi _api;
 
-    public async Task Download(string url, string downloadPath)
+    public async Task DownloadToFile(string url, string downloadPath)
     {
         var page = await _api.GetTrackPage(1903638027);
         Console.WriteLine("GOOD!");
