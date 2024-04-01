@@ -6,7 +6,7 @@ using Org.BouncyCastle.Security;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Deemix
+namespace DeezNET
 {
     internal static class Decryption
     {

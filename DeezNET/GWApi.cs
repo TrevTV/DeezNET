@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using System.Text;
 
-namespace Deemix
+namespace DeezNET
 {
     public class GWApi
     {

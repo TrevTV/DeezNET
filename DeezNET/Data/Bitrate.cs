@@ -1,4 +1,4 @@
-﻿namespace Deemix.Data;
+﻿namespace DeezNET.Data;
 
 public enum Bitrate
 {

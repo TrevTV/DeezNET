@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Deemix\Deemix.csproj" />
+    <ProjectReference Include="..\DeezNET\DeezNET.csproj" />
   </ItemGroup>
 
 </Project>

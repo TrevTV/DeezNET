@@ -1,4 +1,4 @@
-﻿namespace Deemix.Exceptions;
+﻿namespace DeezNET.Exceptions;
 
 public class InvalidARLException : Exception
 {

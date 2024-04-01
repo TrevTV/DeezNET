@@ -1,18 +1,18 @@
-﻿using Deemix.Data;
+﻿using DeezNET.Data;
 using System.Text;
 
-namespace Deemix;
+namespace DeezNET;
 
-public class DeemixClient
+public class DeezerClient
 {
-    public static async Task<DeemixClient> Create(string arl, Bitrate bitrate = Bitrate.MP3_320)
+    public static async Task<DeezerClient> Create(string arl, Bitrate bitrate = Bitrate.MP3_320)
     {
-        DeemixClient client = new(arl, bitrate);
-        //await client._api.SetToken();
+        DeezerClient client = new(arl, bitrate);
+        await client._api.SetToken();
         return client;
     }
 
-    private DeemixClient(string arl, Bitrate bitrate)
+    private DeezerClient(string arl, Bitrate bitrate)
     {
         _bitrate = bitrate;
         _client = new HttpClient();
