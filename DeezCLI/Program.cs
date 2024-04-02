@@ -6,8 +6,9 @@ namespace DeezCLI
     {
         static async Task Main(string[] args)
         {
-            var a = await DeezerClient.Create("", DeezNET.Data.Bitrate.FLAC);
-            await a.DownloadToFile("", "");
+            var cli = await DeezerClient.Create("");
+            var bytes = await cli.Downloader.GetTrackBytes(401934352, DeezNET.Data.Bitrate.FLAC);
+            File.WriteAllBytes(@"C:\Users\trevo\Desktop\out.flac", bytes);
         }
     }
 }

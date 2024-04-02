@@ -10,6 +10,37 @@ namespace DeezNET
 {
     internal static class Decryption
     {
+        public static void DecodeTrackStream(Stream input, Stream output, bool isCrypted, string blowfishKey)
+        {
+            bool isStart = true;
+
+            int bytesRead;
+            byte[] buffer = new byte[2048 * 3];
+            while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (isCrypted && bytesRead >= 2048)
+                {
+                    buffer = [.. DecryptChunk(blowfishKey, buffer.AsSpan(0, 2048)), .. buffer.AsSpan(2048)];
+                }
+
+                if (isStart && buffer[0] == 0 && !Encoding.UTF8.GetString(buffer, 4, 4).Equals("ftyp"))
+                {
+                    for (int i = 0; i < buffer.Length; i++)
+                    {
+                        if (buffer[i] != 0)
+                        {
+                            buffer = new ArraySegment<byte>(buffer, i, buffer.Length - i).ToArray();
+                            break;
+                        }
+                    }
+                }
+
+                isStart = false;
+
+                output.Write(buffer, 0, buffer.Length);
+            }
+        }
+
         public static string GenerateBlowfishKey(string trackId)
         {
             const string SECRET = "g4el58wc0zvf9na1";
