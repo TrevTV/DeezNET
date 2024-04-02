@@ -1,4 +1,5 @@
 ﻿using DeezNET.Data;
+using DeezNET.Exceptions;
 using Newtonsoft.Json.Linq;
 using System.Text;
 
@@ -82,9 +83,11 @@ namespace DeezNET
                     await SetToken();
                     return await Call(method, args, parameters);
                 }
-                else
-                    // TODO: make this a custom exception
-                    throw new Exception(error.ToString());
+
+                if (error["DATA_ERROR"] != null)
+                    throw new InvalidIDException("The given ID is not valid. It either does not exist or is not for the requested content type.");
+
+                throw new Exception(error.ToString());
             }
 
             return json["results"]!;
