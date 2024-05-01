@@ -16,6 +16,7 @@ public class DeezerClient
     private DeezerClient(string arl)
     {
         _client = new HttpClient();
+        _client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
         _gw = new(_client, arl);
         _arl = arl;
         _downloader = new(_client, arl, _gw);

@@ -41,6 +41,10 @@ namespace DeezNET
         // TODO: a bunch of stuff i don't feel like implementing right now
 
         public async Task<TrackPage> GetTrackPage(int songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId })).ToObject<TrackPage>()!;
+        
+        // 'us' is not a language, i know, but it is what deezer sends to the endpoint apparently
+        // it doesn't seem to change much anyway, the Accept-Language header seems to be used instead
+        public async Task<AlbumPage> GetAlbumPage(int albumId) => (await Call("deezer.pageAlbum", new() { ["ALB_ID"] = albumId, ["LANG"] = "us" })).ToObject<AlbumPage>()!;
 
         private async Task<JToken> Call(string method, JObject? args = null, Dictionary<string, string>? parameters = null, bool needsArl = false)
         {

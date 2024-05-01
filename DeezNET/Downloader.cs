@@ -1,6 +1,7 @@
 ﻿using DeezNET.Data;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using DeezNET.Metadata;
 
 namespace DeezNET;
 
@@ -17,7 +18,37 @@ public class Downloader
     private string _arl;
     private GWApi _gw;
 
-    public async Task<byte[]> GetTrackBytes(int trackId, Bitrate bitrate)
+    private const string CDN_TEMPLATE = "https://e-cdn-images.dzcdn.net/images/cover/{0}/{1}x{1}-000000-80-0-0.jpg";
+    private readonly byte[] FLAC_MAGIC = "fLaC"u8.ToArray();
+
+    public async Task<byte[]> ApplyMetadataToTrackBytes(int trackId, byte[] trackData)
+    {
+        TrackPage page = await _gw.GetTrackPage(trackId);
+        AlbumPage albumPage = await _gw.GetAlbumPage(int.Parse(page.Data.AlbId));
+        byte[] albumArt = await _client.GetByteArrayAsync(string.Format(CDN_TEMPLATE, page.Data.AlbPicture, 512));
+
+        string ext = Enumerable.SequenceEqual(trackData[0..4], FLAC_MAGIC) ? ".flac" : ".mp3";
+
+        FileBytesAbstraction abstraction = new("track" + ext, trackData);
+        TagLib.File track = TagLib.File.Create(abstraction);
+        track.Tag.Title = page.Data.SngTitle;
+        track.Tag.Album = page.Data.AlbTitle;
+        track.Tag.Performers = page.Data.Artists.Select(a => a.ArtName).ToArray();
+        track.Tag.AlbumArtists = albumPage.Data.Artists.Select(a => a.ArtName).ToArray();
+        DateTime releaseDate = DateTime.Parse(page.Data.PhysicalReleaseDate);
+        track.Tag.Year = (uint)releaseDate.Year;
+        track.Tag.Track = uint.Parse(page.Data.TrackNumber);
+        track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
+        track.Save();
+
+        byte[] attached = abstraction.MemoryStream.ToArray();
+
+        abstraction.MemoryStream.Dispose();
+        track.Dispose();
+        return attached;
+    }
+
+    public async Task<byte[]> GetRawTrackBytes(int trackId, Bitrate bitrate)
     {
         TrackPage page = await _gw.GetTrackPage(trackId);
         TrackUrls urls = await GetTrackUrl(page.Data.TrackToken, bitrate);
