@@ -14,22 +14,21 @@ namespace DeezNET
             _apiToken = "null"; // this doesn't necessarily need to be null; used for deezer.getUserData
         }
 
-        public JToken ActiveUserData { get => _activeUserData; }
+        public UserData ActiveUserData { get => _activeUserData; }
 
         private HttpClient _client;
         private string _arl;
         private string _apiToken;
-        private JToken _activeUserData;
+        private UserData _activeUserData;
 
         internal async Task SetToken()
         {
-            JToken userData = await GetUserData();
+            UserData userData = await GetUserData();
             _activeUserData = userData;
-            _apiToken = userData["checkForm"]!.ToString();
+            _apiToken = userData.CheckForm;
         }
 
-        // the UserData json response is cursed to the point where using a JToken directly is a better solution
-        public async Task<JToken> GetUserData() => await Call("deezer.getUserData", needsArl: true);
+        public async Task<UserData> GetUserData() => (await Call("deezer.getUserData", needsArl: true)).ToObject<UserData>()!;
 
         public async Task<JToken> GetUserProfilePage(int userId, int tab, int limit = 10) => await Call("deezer.getUserProfilePage", new()
         {
@@ -39,6 +38,7 @@ namespace DeezNET
         });
 
         // TODO: a bunch of stuff i don't feel like implementing right now
+        // see deezer-py-main/deezer/gw.py
 
         public async Task<TrackPage> GetTrackPage(int songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId })).ToObject<TrackPage>()!;
         

@@ -7,18 +7,15 @@ internal class FileBytesAbstraction : TagLib.File.IFileAbstraction
     {
         Name = name;
 
-        // copying it like this allows for an expandable stream
-        //using MemoryStream arrayStream = new(bytes);
         MemoryStream stream = new();
         stream.Write(bytes, 0, bytes.Length);
-        //arrayStream.CopyTo(stream);
         
         MemoryStream = stream;
     }
 
     public void CloseStream(Stream stream)
     {
-        // shared read/write stream so we don't want it to close it
+        // shared read/write stream so we don't want it to close it when switching AccessMode (see TagLib.NonContainer.File.AccessMode for more context)
     }
 
     public string Name { get; private set; }

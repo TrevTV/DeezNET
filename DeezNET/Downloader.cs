@@ -39,6 +39,9 @@ public class Downloader
         track.Tag.Year = (uint)releaseDate.Year;
         track.Tag.Track = uint.Parse(page.Data.TrackNumber);
         track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
+        // TODO: genres
+        // a simple get to https://api.deezer.com/album/{id} will give a `genres` list, if they have it defined
+
         track.Save();
 
         byte[] attached = abstraction.MemoryStream.ToArray();
@@ -74,7 +77,7 @@ public class Downloader
     {
         GetUrlRequestBody reqData = new()
         {
-            LicenseToken = _gw.ActiveUserData["USER"]!["OPTIONS"]!["license_token"]!.ToString(),
+            LicenseToken = _gw.ActiveUserData.User.Options.LicenseToken,
             TrackTokens = [token],
             Media =
             [
