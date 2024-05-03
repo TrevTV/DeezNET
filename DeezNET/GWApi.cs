@@ -1,6 +1,7 @@
 ﻿using DeezNET.Data;
 using DeezNET.Exceptions;
 using Newtonsoft.Json.Linq;
+using System.Net.Http.Headers;
 using System.Text;
 
 namespace DeezNET
@@ -28,23 +29,107 @@ namespace DeezNET
             _apiToken = userData.CheckForm;
         }
 
+        // TODO: stress testing functions, the models don't have many optionals and are based off a single json response so theres a high change newtonsoft will throw an error for something
+
         public async Task<UserData> GetUserData() => (await Call("deezer.getUserData", needsArl: true)).ToObject<UserData>()!;
 
-        public async Task<JToken> GetUserProfilePage(int userId, int tab, int limit = 10) => await Call("deezer.getUserProfilePage", new()
+        public async Task<JToken> GetUserProfilePage(int userId, string tab, int limit = 10) => await Call("deezer.pageProfile", new()
         {
             ["USER_ID"] = userId,
             ["tab"] = tab,
             ["nb"] = limit
         });
 
-        // TODO: a bunch of stuff i don't feel like implementing right now
-        // see deezer-py-main/deezer/gw.py
+        public async Task<JToken> GetUserFavoriteIds(int limit = 10000, int start = 0, string? checksum = null) => await Call("song.getFavoriteIds", new()
+        {
+            ["start"] = start,
+            ["checksum"] = checksum,
+            ["nb"] = limit
+        });
+
+        public async Task<JToken> GetChildAccounts() => await Call("deezer.getChildAccounts");
 
         public async Task<TrackPage> GetTrackPage(int songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId })).ToObject<TrackPage>()!;
-        
+
+        public async Task<JToken> GetTrack(int songId) => await Call("song.getData", new()
+        {
+            ["SNG_ID"] = songId
+        });
+
+        public async Task<JToken> GetTracks(int[] songIds) => await Call("song.getListData", new()
+        {
+            ["SNG_IDS"] = new JArray(songIds)
+        });
+
+        public async Task<JToken> GetTrackLyrics(int songId) => await Call("song.getLyrics", new()
+        {
+            ["SNG_ID"] = songId
+        });
+
         // 'us' is not a language, i know, but it is what deezer sends to the endpoint apparently
         // it doesn't seem to change much anyway, the Accept-Language header seems to be used instead
         public async Task<AlbumPage> GetAlbumPage(int albumId) => (await Call("deezer.pageAlbum", new() { ["ALB_ID"] = albumId, ["LANG"] = "us" })).ToObject<AlbumPage>()!;
+
+        public async Task<JToken> GetAlbum(int albId) => await Call("album.getData", new()
+        {
+            ["ALB_ID"] = albId
+        });
+
+        public async Task<JToken> GetAlbumTracks(int albId) => await Call("song.getListByAlbum", new()
+        {
+            ["ALB_ID"] = albId,
+            ["nb"] = -1,
+        });
+
+        public async Task<ArtistPage> GetArtistPage(int artistId) => (await Call("deezer.pageArtist", new() { ["ART_ID"] = artistId, ["LANG"] = "us" })).ToObject<ArtistPage>()!;
+
+        public async Task<JToken> GetArtist(int artId) => await Call("artist.getData", new()
+        {
+            ["ART_ID"] = artId
+        });
+
+        public async Task<JToken> GetArtistTopTracks(int artId, int limit = 100) => await Call("artist.getTopTrack", new()
+        {
+            ["ART_ID"] = artId,
+            ["nb"] = limit
+        });
+
+        public async Task<JToken> GetArtistDiscography(int artId, int index = 0, int limit = 25) => await Call("artist.getDiscography", new()
+        {
+            ["ART_ID"] = artId,
+            ["discography_mode"] = "all",
+            ["nb"] = limit,
+            ["nb_songs"] = 0,
+            ["start"] = index,
+        });
+
+        // TODO: a bunch of stuff i don't feel like implementing right now
+        // see deezer-py-main/deezer/gw.py
+
+        // GetPlaylist
+        // GetPlaylistPage
+        // GetPlaylistTracks
+        // CreatePlaylist
+        // EditPlaylist
+        // AddSongsToPlaylist
+        // AddSongToPlaylist
+        // RemoveSongsFromPlaylist
+        // RemoveSongFromPlaylist
+        // DeletePlaylist
+        
+        // AddSongToFavorites
+        // RemoveSongFromFavorites
+        // AddAlbumToFavorites
+        // RemoveAlbumFromFavorites
+        // AddArtistToFavorites
+        // RemoveArtistFromFavorites
+        // AddPlaylistToFavorites
+        // RemovePlaylistFromFavorites
+
+        // GetPage
+
+        // Search
+        // SearchMusic
 
         private async Task<JToken> Call(string method, JObject? args = null, Dictionary<string, string>? parameters = null, bool needsArl = false)
         {
