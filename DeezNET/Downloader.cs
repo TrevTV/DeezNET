@@ -56,14 +56,18 @@ public class Downloader
         return attached;
     }
 
-    public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate)
+    public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate, Bitrate? fallback = null)
     {
         JToken page = await _gw.GetTrackPage(trackId);
         TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate);
 
         Uri? encryptedUri = urls.Data.FirstOrDefault()?.Media.FirstOrDefault()?.Sources.FirstOrDefault()?.Url;
         if (encryptedUri == null)
+        {
+            if (fallback != null)
+                return await GetRawTrackBytes(trackId, fallback.Value);
             throw new NoSourcesAvailableException($"Track ID {trackId} has no available media sources for bitrate {bitrate}.");
+        }
 
         HttpRequestMessage message = new(HttpMethod.Get, encryptedUri);
         HttpResponseMessage response = await _client.SendAsync(message);
