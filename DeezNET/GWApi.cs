@@ -33,7 +33,7 @@ public class GWApi
 
     public async Task<UserData> GetUserData() => (await Call("deezer.getUserData", needsArl: true)).ToObject<UserData>()!;
 
-    public async Task<JToken> GetUserProfilePage(int userId, string tab, int limit = 10) => await Call("deezer.pageProfile", new()
+    public async Task<JToken> GetUserProfilePage(long userId, string tab, int limit = 10) => await Call("deezer.pageProfile", new()
     {
         ["USER_ID"] = userId,
         ["tab"] = tab,
@@ -49,52 +49,52 @@ public class GWApi
 
     public async Task<JToken> GetChildAccounts() => await Call("deezer.getChildAccounts");
 
-    public async Task<TrackPage> GetTrackPage(int songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId })).ToObject<TrackPage>()!;
+    public async Task<TrackPage> GetTrackPage(long songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId })).ToObject<TrackPage>()!;
 
-    public async Task<JToken> GetTrack(int songId) => await Call("song.getData", new()
+    public async Task<JToken> GetTrack(long songId) => await Call("song.getData", new()
     {
         ["SNG_ID"] = songId
     });
 
-    public async Task<JToken> GetTracks(int[] songIds) => await Call("song.getListData", new()
+    public async Task<JToken> GetTracks(long[] songIds) => await Call("song.getListData", new()
     {
         ["SNG_IDS"] = new JArray(songIds)
     });
 
-    public async Task<JToken> GetTrackLyrics(int songId) => await Call("song.getLyrics", new()
+    public async Task<JToken> GetTrackLyrics(long songId) => await Call("song.getLyrics", new()
     {
         ["SNG_ID"] = songId
     });
 
     // 'us' is not a language, i know, but it is what deezer sends to the endpoint apparently
     // it doesn't seem to change much anyway, the Accept-Language header seems to be used instead
-    public async Task<AlbumPage> GetAlbumPage(int albumId) => (await Call("deezer.pageAlbum", new() { ["ALB_ID"] = albumId, ["LANG"] = "us" })).ToObject<AlbumPage>()!;
+    public async Task<AlbumPage> GetAlbumPage(long albumId) => (await Call("deezer.pageAlbum", new() { ["ALB_ID"] = albumId, ["LANG"] = "us" })).ToObject<AlbumPage>()!;
 
-    public async Task<JToken> GetAlbum(int albId) => await Call("album.getData", new()
+    public async Task<JToken> GetAlbum(long albId) => await Call("album.getData", new()
     {
         ["ALB_ID"] = albId
     });
 
-    public async Task<JToken> GetAlbumTracks(int albId) => await Call("song.getListByAlbum", new()
+    public async Task<JToken> GetAlbumTracks(long albId) => await Call("song.getListByAlbum", new()
     {
         ["ALB_ID"] = albId,
         ["nb"] = -1,
     });
 
-    public async Task<ArtistPage> GetArtistPage(int artistId) => (await Call("deezer.pageArtist", new() { ["ART_ID"] = artistId, ["LANG"] = "us" })).ToObject<ArtistPage>()!;
+    public async Task<ArtistPage> GetArtistPage(long artistId) => (await Call("deezer.pageArtist", new() { ["ART_ID"] = artistId, ["LANG"] = "us" })).ToObject<ArtistPage>()!;
 
-    public async Task<JToken> GetArtist(int artId) => await Call("artist.getData", new()
+    public async Task<JToken> GetArtist(long artId) => await Call("artist.getData", new()
     {
         ["ART_ID"] = artId
     });
 
-    public async Task<JToken> GetArtistTopTracks(int artId, int limit = 100) => await Call("artist.getTopTrack", new()
+    public async Task<JToken> GetArtistTopTracks(long artId, int limit = 100) => await Call("artist.getTopTrack", new()
     {
         ["ART_ID"] = artId,
         ["nb"] = limit
     });
 
-    public async Task<JToken> GetArtistDiscography(int artId, int index = 0, int limit = 25) => await Call("artist.getDiscography", new()
+    public async Task<JToken> GetArtistDiscography(long artId, int index = 0, int limit = 25) => await Call("artist.getDiscography", new()
     {
         ["ART_ID"] = artId,
         ["discography_mode"] = "all",
@@ -103,19 +103,19 @@ public class GWApi
         ["start"] = index,
     });
 
-    public async Task<JToken> GetPlaylistPage(int playlistId) => await Call("deezer.pagePlaylist", new()
+    public async Task<JToken> GetPlaylistPage(long playlistId) => await Call("deezer.pagePlaylist", new()
     {
         ["PLAYLIST_ID"] = playlistId,
         ["lang"] = "en"
     });
 
-    public async Task<JToken> GetPlaylistTracks(int playlistId) => await Call("playlist.getSongs", new()
+    public async Task<JToken> GetPlaylistTracks(long playlistId) => await Call("playlist.getSongs", new()
     {
         ["PLAYLIST_ID"] = playlistId,
         ["nb"] = -1
     });
 
-    public async Task<JToken> CreatePlaylist(string title, string description, int[] trackIds, PlaylistStatus status = PlaylistStatus.PUBLIC) => await Call("playlist.create", new()
+    public async Task<JToken> CreatePlaylist(string title, string description, long[] trackIds, PlaylistStatus status = PlaylistStatus.PUBLIC) => await Call("playlist.create", new()
     {
         ["title"] = title,
         ["description"] = description,
@@ -123,7 +123,7 @@ public class GWApi
         ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString())))
     });
 
-    public async Task<JToken> EditPlaylist(int playlistId, string title, PlaylistStatus status, string description, int[] trackIds) => await Call("playlist.update", new()
+    public async Task<JToken> EditPlaylist(long playlistId, string title, PlaylistStatus status, string description, long[] trackIds) => await Call("playlist.update", new()
     {
         ["PLAYLIST_ID"] = playlistId,
         ["title"] = title,
@@ -132,64 +132,64 @@ public class GWApi
         ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString())))
     });
 
-    public async Task<JToken> AddSongsToPlaylist(int playlistId, int[] trackIds, int offset = -1) => await Call("playlist.addSongs", new()
+    public async Task<JToken> AddSongsToPlaylist(long playlistId, long[] trackIds, int offset = -1) => await Call("playlist.addSongs", new()
     {
         ["PLAYLIST_ID"] = playlistId,
         ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString()))),
         ["offset"] = offset
     });
 
-    public async Task<JToken> AddSongToPlaylist(int playlistId, int trackId, int offset = -1) => await AddSongsToPlaylist(playlistId, [trackId], offset);
+    public async Task<JToken> AddSongToPlaylist(long playlistId, long trackId, int offset = -1) => await AddSongsToPlaylist(playlistId, [trackId], offset);
 
-    public async Task<JToken> RemoveSongsFromPlaylist(int playlistId, int[] trackIds) => await Call("playlist.deleteSongs", new()
+    public async Task<JToken> RemoveSongsFromPlaylist(long playlistId, long[] trackIds) => await Call("playlist.deleteSongs", new()
     {
         ["PLAYLIST_ID"] = playlistId,
         ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString()))),
     });
 
-    public async Task<JToken> RemoveSongFromPlaylist(int playlistId, int trackId) => await RemoveSongsFromPlaylist(playlistId, [trackId]);
+    public async Task<JToken> RemoveSongFromPlaylist(long playlistId, long trackId) => await RemoveSongsFromPlaylist(playlistId, [trackId]);
 
-    public async Task<JToken> DeletePlaylist(int playlistId) => await Call("playlist.delete", new()
+    public async Task<JToken> DeletePlaylist(long playlistId) => await Call("playlist.delete", new()
     {
         ["PLAYLIST_ID"] = playlistId
     });
 
-    public async Task<JToken> AddSongToFavorites(int songId) => await Call("favorite_song.add", new()
+    public async Task<JToken> AddSongToFavorites(long songId) => await Call("favorite_song.add", new()
     {
         ["SNG_ID"] = songId
     });
 
-    public async Task<JToken> RemoveSongToFavorites(int songId) => await Call("favorite_song.remove", new()
+    public async Task<JToken> RemoveSongToFavorites(long songId) => await Call("favorite_song.remove", new()
     {
         ["SNG_ID"] = songId
     });
 
-    public async Task<JToken> AddAlbumToFavorites(int albumId) => await Call("album.addFavorite", new()
+    public async Task<JToken> AddAlbumToFavorites(long albumId) => await Call("album.addFavorite", new()
     {
         ["ALB_ID"] = albumId
     });
 
-    public async Task<JToken> RemoveAlbumToFavorites(int albumId) => await Call("album.deleteFavorite", new()
+    public async Task<JToken> RemoveAlbumToFavorites(long albumId) => await Call("album.deleteFavorite", new()
     {
         ["ALB_ID"] = albumId
     });
 
-    public async Task<JToken> AddArtistToFavorites(int artistId) => await Call("artist.addFavorite", new()
+    public async Task<JToken> AddArtistToFavorites(long artistId) => await Call("artist.addFavorite", new()
     {
         ["ART_ID"] = artistId
     });
 
-    public async Task<JToken> RemoveArtistToFavorites(int artistId) => await Call("artist.deleteFavorite", new()
+    public async Task<JToken> RemoveArtistToFavorites(long artistId) => await Call("artist.deleteFavorite", new()
     {
         ["ART_ID"] = artistId
     });
 
-    public async Task<JToken> AddPlaylistToFavorites(int playlistId) => await Call("playlist.addFavorite", new()
+    public async Task<JToken> AddPlaylistToFavorites(long playlistId) => await Call("playlist.addFavorite", new()
     {
         ["PARENT_PLAYLIST_ID"] = playlistId
     });
 
-    public async Task<JToken> RemovePlaylistToFavorites(int playlistId) => await Call("playlist.deleteFavorite", new()
+    public async Task<JToken> RemovePlaylistToFavorites(long playlistId) => await Call("playlist.deleteFavorite", new()
     {
         ["PLAYLIST_ID"] = playlistId
     });
