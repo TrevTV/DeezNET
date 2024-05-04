@@ -16,6 +16,7 @@ public class GWApi
     }
 
     public JToken ActiveUserData { get => _activeUserData; }
+    internal string ARL { get => _arl; set => _arl = value; }
 
     private HttpClient _client;
     private string _arl;
@@ -236,6 +237,9 @@ public class GWApi
 
     private async Task<JToken> Call(string method, JObject? args = null, Dictionary<string, string>? parameters = null, bool needsArl = false)
     {
+        if (string.IsNullOrEmpty(_arl))
+            throw new InvalidARLException("A GWApi method is attempting to be called without being provided an ARL.");
+
         parameters ??= [];
         parameters["api_version"] = "1.0";
         parameters["api_token"] = _apiToken;

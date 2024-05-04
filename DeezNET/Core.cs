@@ -2,7 +2,7 @@
 
 public class DeezerClient
 {
-    public static async Task<DeezerClient> Create(string arl)
+    public static async Task<DeezerClient> Create(string arl = "")
     {
         DeezerClient client = new(arl);
         await client._gwApi.SetToken();
@@ -11,12 +11,21 @@ public class DeezerClient
 
     private DeezerClient(string arl)
     {
+        _arl = arl;
+
         _client = new HttpClient();
         _client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
+
         _gwApi = new(_client, arl);
         _publicApi = new(_client);
-        _arl = arl;
         _downloader = new(_client, arl, _gwApi, _publicApi);
+    }
+
+    public async Task UpdateARL(string arl)
+    {
+        _arl = arl;
+        _gwApi.ARL = arl;
+        await _gwApi.SetToken();
     }
 
     public Downloader Downloader { get => _downloader; }

@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using DeezNET.Metadata;
+using DeezNET.Exceptions;
 
 namespace DeezNET;
 
@@ -60,8 +61,9 @@ public class Downloader
         JToken page = await _gw.GetTrackPage(trackId);
         TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate);
 
-        // TODO: multiple sources, also possibly multiple tracks
-        Uri encryptedUri = urls.Data.First().Media.First().Sources.First().Url;
+        Uri? encryptedUri = urls.Data.FirstOrDefault()?.Media.FirstOrDefault()?.Sources.FirstOrDefault()?.Url;
+        if (encryptedUri == null)
+            throw new NoSourcesAvailableException($"Track ID {trackId} has no available media sources for bitrate {bitrate}.");
 
         HttpRequestMessage message = new(HttpMethod.Get, encryptedUri);
         HttpResponseMessage response = await _client.SendAsync(message);
