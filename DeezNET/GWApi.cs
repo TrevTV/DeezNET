@@ -15,23 +15,21 @@ public class GWApi
         _apiToken = "null"; // this doesn't necessarily need to be null; used for deezer.getUserData
     }
 
-    public UserData ActiveUserData { get => _activeUserData; }
+    public JToken ActiveUserData { get => _activeUserData; }
 
     private HttpClient _client;
     private string _arl;
     private string _apiToken;
-    private UserData _activeUserData;
+    private JToken _activeUserData;
 
     internal async Task SetToken()
     {
-        UserData userData = await GetUserData();
+        JToken userData = await GetUserData();
         _activeUserData = userData;
-        _apiToken = userData.CheckForm;
+        _apiToken = userData["checkForm"]!.ToString();
     }
 
-    // TODO: stress testing functions, the models don't have many optionals and are based off a single json response so theres a high change newtonsoft will throw an error for something
-
-    public async Task<UserData> GetUserData() => (await Call("deezer.getUserData", needsArl: true)).ToObject<UserData>()!;
+    public async Task<JToken> GetUserData() => (await Call("deezer.getUserData", needsArl: true));
 
     public async Task<JToken> GetUserProfilePage(long userId, string tab, int limit = 10) => await Call("deezer.pageProfile", new()
     {
@@ -49,7 +47,7 @@ public class GWApi
 
     public async Task<JToken> GetChildAccounts() => await Call("deezer.getChildAccounts");
 
-    public async Task<TrackPage> GetTrackPage(long songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId })).ToObject<TrackPage>()!;
+    public async Task<JToken> GetTrackPage(long songId) => (await Call("deezer.pageTrack", new() { ["SNG_ID"] = songId }));
 
     public async Task<JToken> GetTrack(long songId) => await Call("song.getData", new()
     {
@@ -68,7 +66,7 @@ public class GWApi
 
     // 'us' is not a language, i know, but it is what deezer sends to the endpoint apparently
     // it doesn't seem to change much anyway, the Accept-Language header seems to be used instead
-    public async Task<AlbumPage> GetAlbumPage(long albumId) => (await Call("deezer.pageAlbum", new() { ["ALB_ID"] = albumId, ["LANG"] = "us" })).ToObject<AlbumPage>()!;
+    public async Task<JToken> GetAlbumPage(long albumId) => (await Call("deezer.pageAlbum", new() { ["ALB_ID"] = albumId, ["LANG"] = "us" }));
 
     public async Task<JToken> GetAlbum(long albId) => await Call("album.getData", new()
     {
@@ -81,7 +79,7 @@ public class GWApi
         ["nb"] = -1,
     });
 
-    public async Task<ArtistPage> GetArtistPage(long artistId) => (await Call("deezer.pageArtist", new() { ["ART_ID"] = artistId, ["LANG"] = "us" })).ToObject<ArtistPage>()!;
+    public async Task<JToken> GetArtistPage(long artistId) => (await Call("deezer.pageArtist", new() { ["ART_ID"] = artistId, ["LANG"] = "us" }));
 
     public async Task<JToken> GetArtist(long artId) => await Call("artist.getData", new()
     {

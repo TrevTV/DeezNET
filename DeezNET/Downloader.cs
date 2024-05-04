@@ -23,26 +23,28 @@ public class Downloader
     private const string CDN_TEMPLATE = "https://e-cdn-images.dzcdn.net/images/cover/{0}/{1}x{1}-000000-80-0-0.jpg";
     private readonly byte[] FLAC_MAGIC = "fLaC"u8.ToArray();
 
-    public async Task<byte[]> ApplyMetadataToTrackBytes(int trackId, byte[] trackData)
+    public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData)
     {
-        TrackPage page = await _gw.GetTrackPage(trackId);
-        AlbumPage albumPage = await _gw.GetAlbumPage(int.Parse(page.Data.AlbId));
-        byte[] albumArt = await _client.GetByteArrayAsync(string.Format(CDN_TEMPLATE, page.Data.AlbPicture, 512));
+        JToken page = await _gw.GetTrackPage(trackId);
+        long albumId = long.Parse(page["DATA"]!["ALB_ID"]!.ToString());
+        JToken albumPage = await _gw.GetAlbumPage(albumId);
+        JToken publicAlbum = await _publicApi.GetAlbum(albumId);
+
+        byte[] albumArt = await _client.GetByteArrayAsync(string.Format(CDN_TEMPLATE, page["DATA"]!["ALB_PICTURE"]!.ToString(), 512));
 
         string ext = Enumerable.SequenceEqual(trackData[0..4], FLAC_MAGIC) ? ".flac" : ".mp3";
 
         FileBytesAbstraction abstraction = new("track" + ext, trackData);
         TagLib.File track = TagLib.File.Create(abstraction);
-        track.Tag.Title = page.Data.SngTitle;
-        track.Tag.Album = page.Data.AlbTitle;
-        track.Tag.Performers = page.Data.Artists.Select(a => a.ArtName).ToArray();
-        track.Tag.AlbumArtists = albumPage.Data.Artists.Select(a => a.ArtName).ToArray();
-        DateTime releaseDate = DateTime.Parse(page.Data.PhysicalReleaseDate);
+        track.Tag.Title = page["DATA"]!["SNG_TITLE"]!.ToString();
+        track.Tag.Album = page["DATA"]!["ALB_TITLE"]!.ToString();
+        track.Tag.Performers = page["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString()).ToArray();
+        track.Tag.AlbumArtists = albumPage["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString()).ToArray();
+        DateTime releaseDate = DateTime.Parse(page["DATA"]!["PHYSICAL_RELEASE_DATE"]!.ToString());
         track.Tag.Year = (uint)releaseDate.Year;
-        track.Tag.Track = uint.Parse(page.Data.TrackNumber);
+        track.Tag.Track = uint.Parse(page["DATA"]!["TRACK_NUMBER"]!.ToString());
         track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
-        // TODO: genres
-        // a simple get to https://api.deezer.com/album/{id} will give a `genres` list, if they have it defined
+        track.Tag.Genres = publicAlbum["genres"]!["data"]!.Select(a => a["name"]!.ToString()).ToArray();
 
         track.Save();
 
@@ -53,10 +55,10 @@ public class Downloader
         return attached;
     }
 
-    public async Task<byte[]> GetRawTrackBytes(int trackId, Bitrate bitrate)
+    public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate)
     {
-        TrackPage page = await _gw.GetTrackPage(trackId);
-        TrackUrls urls = await GetTrackUrl(page.Data.TrackToken, bitrate);
+        JToken page = await _gw.GetTrackPage(trackId);
+        TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate);
 
         // TODO: multiple sources, also possibly multiple tracks
         Uri encryptedUri = urls.Data.First().Media.First().Sources.First().Url;
@@ -79,7 +81,7 @@ public class Downloader
     {
         GetUrlRequestBody reqData = new()
         {
-            LicenseToken = _gw.ActiveUserData.User.Options.LicenseToken,
+            LicenseToken = _gw.ActiveUserData["USER"]!["OPTIONS"]!["license_token"]!.ToString(),
             TrackTokens = [token],
             Media =
             [
