@@ -1,7 +1,6 @@
 ﻿using DeezNET.Data;
 using DeezNET.Exceptions;
 using Newtonsoft.Json.Linq;
-using System.Net.Http.Headers;
 using System.Text;
 
 namespace DeezNET
@@ -103,33 +102,138 @@ namespace DeezNET
             ["start"] = index,
         });
 
-        // TODO: a bunch of stuff i don't feel like implementing right now
-        // see deezer-py-main/deezer/gw.py
+        public async Task<JToken> GetPlaylistPage(int playlistId) => await Call("deezer.pagePlaylist", new()
+        {
+            ["PLAYLIST_ID"] = playlistId,
+            ["lang"] = "en"
+        });
 
-        // GetPlaylist
-        // GetPlaylistPage
-        // GetPlaylistTracks
-        // CreatePlaylist
-        // EditPlaylist
-        // AddSongsToPlaylist
-        // AddSongToPlaylist
-        // RemoveSongsFromPlaylist
-        // RemoveSongFromPlaylist
-        // DeletePlaylist
-        
-        // AddSongToFavorites
-        // RemoveSongFromFavorites
-        // AddAlbumToFavorites
-        // RemoveAlbumFromFavorites
-        // AddArtistToFavorites
-        // RemoveArtistFromFavorites
-        // AddPlaylistToFavorites
-        // RemovePlaylistFromFavorites
+        public async Task<JToken> GetPlaylistTracks(int playlistId) => await Call("playlist.getSongs", new()
+        {
+            ["PLAYLIST_ID"] = playlistId,
+            ["nb"] = -1
+        });
 
-        // GetPage
+        public async Task<JToken> CreatePlaylist(string title, string description, int[] trackIds, PlaylistStatus status = PlaylistStatus.PUBLIC) => await Call("playlist.create", new()
+        {
+            ["title"] = title,
+            ["description"] = description,
+            ["status"] = (int)status,
+            ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString())))
+        });
 
-        // Search
-        // SearchMusic
+        public async Task<JToken> EditPlaylist(int playlistId, string title, PlaylistStatus status, string description, int[] trackIds) => await Call("playlist.update", new()
+        {
+            ["PLAYLIST_ID"] = playlistId,
+            ["title"] = title,
+            ["description"] = description,
+            ["status"] = (int)status,
+            ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString())))
+        });
+
+        public async Task<JToken> AddSongsToPlaylist(int playlistId, int[] trackIds, int offset = -1) => await Call("playlist.addSongs", new()
+        {
+            ["PLAYLIST_ID"] = playlistId,
+            ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString()))),
+            ["offset"] = offset
+        });
+
+        public async Task<JToken> AddSongToPlaylist(int playlistId, int trackId, int offset = -1) => await AddSongsToPlaylist(playlistId, [trackId], offset);
+
+        public async Task<JToken> RemoveSongsFromPlaylist(int playlistId, int[] trackIds) => await Call("playlist.deleteSongs", new()
+        {
+            ["PLAYLIST_ID"] = playlistId,
+            ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString()))),
+        });
+
+        public async Task<JToken> RemoveSongFromPlaylist(int playlistId, int trackId) => await RemoveSongsFromPlaylist(playlistId, [trackId]);
+
+        public async Task<JToken> DeletePlaylist(int playlistId) => await Call("playlist.delete", new()
+        {
+            ["PLAYLIST_ID"] = playlistId
+        });
+
+        public async Task<JToken> AddSongToFavorites(int songId) => await Call("favorite_song.add", new()
+        {
+            ["SNG_ID"] = songId
+        });
+
+        public async Task<JToken> RemoveSongToFavorites(int songId) => await Call("favorite_song.remove", new()
+        {
+            ["SNG_ID"] = songId
+        });
+
+        public async Task<JToken> AddAlbumToFavorites(int albumId) => await Call("album.addFavorite", new()
+        {
+            ["ALB_ID"] = albumId
+        });
+
+        public async Task<JToken> RemoveAlbumToFavorites(int albumId) => await Call("album.deleteFavorite", new()
+        {
+            ["ALB_ID"] = albumId
+        });
+
+        public async Task<JToken> AddArtistToFavorites(int artistId) => await Call("artist.addFavorite", new()
+        {
+            ["ART_ID"] = artistId
+        });
+
+        public async Task<JToken> RemoveArtistToFavorites(int artistId) => await Call("artist.deleteFavorite", new()
+        {
+            ["ART_ID"] = artistId
+        });
+
+        public async Task<JToken> AddPlaylistToFavorites(int playlistId) => await Call("playlist.addFavorite", new()
+        {
+            ["PARENT_PLAYLIST_ID"] = playlistId
+        });
+
+        public async Task<JToken> RemovePlaylistToFavorites(int playlistId) => await Call("playlist.deleteFavorite", new()
+        {
+            ["PLAYLIST_ID"] = playlistId
+        });
+
+        public async Task<JToken> GetPage(string page) => await Call("page.get", parameters: new()
+        {
+            { "gateway_input", new JObject()
+                {
+                    ["PAGE"] = page,
+                    ["VERSION"] = "2.3",
+                    ["SUPPORT"] = new JObject()
+                    {
+                        ["grid"] = new JArray()
+                        {
+                            "channel",
+                            "album"
+                        },
+                        ["horizontal-grid"] = new JArray()
+                        {
+                            "album"
+                        }
+                    },
+                    ["LANG"] = "us"
+                }.ToString()
+            }
+        });
+
+        public async Task<JToken> Search(string query, int index = 0, int limit = 10, bool suggest = true, bool artistSuggest = true, bool topTracks = true) => await Call("deezer.pageSearch", new()
+        {
+            ["query"] = query,
+            ["start"] = index,
+            ["nb"] = limit,
+            ["suggest"] = suggest,
+            ["artist_suggest"] = artistSuggest,
+            ["top_tracks"] = topTracks,
+        });
+
+        public async Task<JToken> SearchMusic(string query, string type, int index = 0, int limit = 10) => await Call("search.music", new()
+        {
+            ["query"] = query,
+            ["start"] = index,
+            ["nb"] = limit,
+            ["output"] = type,
+            ["filter"] = "ALL"
+        });
 
         private async Task<JToken> Call(string method, JObject? args = null, Dictionary<string, string>? parameters = null, bool needsArl = false)
         {
