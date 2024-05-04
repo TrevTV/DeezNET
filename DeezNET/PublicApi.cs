@@ -380,7 +380,6 @@ public class PublicApi
             JToken? code = error["code"];
             if (code != null)
             {
-                // TODO: is this how you get the code?
                 string? message = error["message"]?.ToString();
                 int err = (int)code;
                 switch (err)
