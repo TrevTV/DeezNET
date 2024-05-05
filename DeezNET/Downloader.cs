@@ -22,6 +22,12 @@ public class Downloader
     private const string CDN_TEMPLATE = "https://e-cdn-images.dzcdn.net/images/cover/{0}/{1}x{1}-000000-80-0-0.jpg";
     private readonly byte[] FLAC_MAGIC = "fLaC"u8.ToArray();
 
+    /// <summary>
+    /// Applies ID3 metadata to the given byte array.
+    /// </summary>
+    /// <param name="trackId">The track ID to base metadata on.</param>
+    /// <param name="trackData">The track byte data to apply the metadata to.</param>
+    /// <returns>The modified track data</returns>
     public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData)
     {
         JToken page = await _gw.GetTrackPage(trackId);
@@ -55,6 +61,14 @@ public class Downloader
         return attached;
     }
 
+    /// <summary>
+    /// Downloads and decrypts track data for a given ID and bitrate.
+    /// </summary>
+    /// <param name="trackId">The track ID to download.</param>
+    /// <param name="bitrate">The preferred bitrate to download.</param>
+    /// <param name="fallback">The secondary bitrate choice if the preferred is unavailable.</param>
+    /// <returns>The raw track data.</returns>
+    /// <exception cref="NoSourcesAvailableException"></exception>
     public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate, Bitrate? fallback = null)
     {
         JToken page = await _gw.GetTrackPage(trackId);
@@ -82,6 +96,11 @@ public class Downloader
         return outStream.ToArray();
     }
 
+    /// <summary>
+    /// Returns a different bitrate to act as a fallback.
+    /// </summary>
+    /// <param name="bitrate">The preferred bitrate.</param>
+    /// <returns>The recommended fallback.</returns>
     public static Bitrate GetLowerFallbackBitrate(Bitrate bitrate)
     {
         return bitrate switch

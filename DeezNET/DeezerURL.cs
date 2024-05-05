@@ -4,10 +4,25 @@ using System.Text.RegularExpressions;
 
 namespace DeezNET;
 
+/// <summary>
+/// A representation of a Deezer URL for usage with the API.
+/// </summary>
+/// <param name="url">The complete Deezer URL, if the original URL is shortened, this will be the full, unshortened link.</param>
+/// <param name="type">The entity type this URL represents.</param>
+/// <param name="id">The entity ID this URL references.</param>
 public class DeezerURL(string url, EntityType type, long id)
 {
+    /// <summary>
+    /// The complete Deezer URL, if the original URL is shortened, this will be the full, unshortened link.
+    /// </summary>
     public string Url { get; init; } = url;
+    /// <summary>
+    /// The entity type this URL represents.
+    /// </summary>
     public EntityType EntityType { get; init; } = type;
+    /// <summary>
+    /// The entity ID this URL references.
+    /// </summary>
     public long Id { get; init; } = id;
 
     private static HttpClient _httpClient = new(new HttpClientHandler()
@@ -15,6 +30,12 @@ public class DeezerURL(string url, EntityType type, long id)
         AllowAutoRedirect = false,
     });
 
+    /// <summary>
+    /// Parses a URL.
+    /// </summary>
+    /// <param name="url">The URL to parse.</param>
+    /// <param name="deezerUrl">The parsed DeezerURL.</param>
+    /// <returns>If the parsing was successful.</returns>
     public static bool TryParse(string url, out DeezerURL deezerUrl)
     {
         try
@@ -31,6 +52,12 @@ public class DeezerURL(string url, EntityType type, long id)
         }
     }
 
+    /// <summary>
+    /// Parses a URL.
+    /// </summary>
+    /// <param name="url">The URL to parse.</param>
+    /// <returns>The parsed DeezerURL.</returns>
+    /// <exception cref="InvalidURLException"></exception>
     public static DeezerURL Parse(string url)
     {
         if (url.Contains("deezer.page.link"))
@@ -81,6 +108,12 @@ public class DeezerURL(string url, EntityType type, long id)
             throw new InvalidURLException($"URL \"{url}\" has an un-parseable entity ID.");
     }
 
+    /// <summary>
+    /// Finds the redirect of a shortened URL.
+    /// </summary>
+    /// <param name="url">The shortened URL.</param>
+    /// <returns>The unshortened URL. Include any additional parameters, such as tracking.</returns>
+    /// <exception cref="InvalidURLException"></exception>
     public static string UnshortenURL(string url)
     {
         HttpRequestMessage req = new(HttpMethod.Get, url);
@@ -93,6 +126,12 @@ public class DeezerURL(string url, EntityType type, long id)
         return target!;
     }
 
+    /// <summary>
+    /// Gets the tracks associated with the entity.
+    /// </summary>
+    /// <param name="client">The DeezerClient to use when contacting the API. No ARL is necessary.</param>
+    /// <param name="topLimit">The max amount of tracks to return. Only applicable when EntityType is ArtistTop.</param>
+    /// <returns></returns>
     public async Task<long[]> GetAssociatedTracks(DeezerClient client, int topLimit = 100)
     {
         switch (EntityType)
@@ -108,7 +147,7 @@ public class DeezerURL(string url, EntityType type, long id)
             case EntityType.Artist:
                 {
                     long[] albumIds = (await client.PublicApi.GetArtistAlbums(Id))["data"]!.Select(a => (long)a["id"]!).ToArray();
-                    List<long> trackIds = new();
+                    List<long> trackIds = [];
                     for (int i = 0; i < albumIds.Length; i++)
                         trackIds.AddRange((await client.PublicApi.GetAlbumTracks(Id))["data"]!.Select(t => (long)t["id"]!));
                     return trackIds.ToArray();

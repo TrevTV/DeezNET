@@ -2,6 +2,11 @@
 
 public class DeezerClient
 {
+    /// <summary>
+    /// Creates a new DeezerClient.
+    /// </summary>
+    /// <param name="arl">A Deezer account access token. Only needed for downloading and using the GWApi.</param>
+    /// <returns>A new DeezerClient.</returns>
     public static async Task<DeezerClient> Create(string arl = "")
     {
         DeezerClient client = new(arl);
@@ -21,6 +26,10 @@ public class DeezerClient
         _downloader = new(_client, _gwApi, _publicApi);
     }
 
+    /// <summary>
+    /// Changes the internal ARL and refreshes the API token.
+    /// </summary>
+    /// <param name="arl">A Deezer account access token.</param>
     public async Task UpdateARL(string arl)
     {
         _arl = arl;
