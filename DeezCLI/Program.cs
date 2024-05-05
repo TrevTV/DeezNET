@@ -23,7 +23,7 @@ public class DownloadCommand : ICommand
     [CommandParameter(0, Description = "The URL of the item to download. Can be a shortened URL.")]
     public required string URL { get; init; }
 
-    [CommandOption("bitrate", 'b', Description = "The preferred bitrate when downloading. Fallbacks if unavailable.")]
+    [CommandOption("bitrate", 'b', Description = "The preferred bitrate when downloading. Falls back to a lower quality if unavailable.")]
     public Bitrate PreferredBitrate { get; init; } = Bitrate.FLAC;
 
     [CommandOption("add-metadata", 'm', Description = "Whether to attach metadata to the downloaded audio file.")]
