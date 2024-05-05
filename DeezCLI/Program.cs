@@ -4,6 +4,7 @@ using CliFx.Infrastructure;
 using DeezNET;
 using DeezNET.Data;
 using DeezNET.Exceptions;
+using Newtonsoft.Json.Linq;
 
 namespace DeezCLI;
 
@@ -50,23 +51,21 @@ public class DownloadCommand : ICommand
             long[] tracks = await parsedUrl.GetAssociatedTracks(client, TopLimit);
 
             List<Task> tasks = [];
-            using SemaphoreSlim semaphore = new(Concurrent);
+            using SemaphoreSlim semaphore = new(Concurrent, Concurrent);
             foreach (long track in tracks)
             {
-                await semaphore.WaitAsync();
-
                 tasks.Add(Task.Run(async () =>
                 {
-                    await DoDownload(console, track);
-                    semaphore.Release();
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        await DoDownload(console, track);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
                 }));
-            }
-
-            foreach (Task task in tasks)
-            {
-                await semaphore.WaitAsync();
-                if (!task.IsCompleted) // i have a strong feeling adding this means ive done something wrong, but i have no idea honestly
-                    task.Start();
             }
 
             await Task.WhenAll(tasks);
@@ -79,12 +78,43 @@ public class DownloadCommand : ICommand
 
     private async Task DoDownload(IConsole console, long track)
     {
-        byte[] trackData = await client.Downloader.GetRawTrackBytes(track, PreferredBitrate, Bitrate.MP3_320);
+        console.Output.WriteLine($"Downloading track {track}...");
+
+        JToken page = await client.GWApi.GetTrackPage(track);
+        byte[] trackData = await client.Downloader.GetRawTrackBytes(track, PreferredBitrate, Bitrate.MP3_320); // TODO: improve fallback
         if (Metadata)
         {
             trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData);
         }
 
-        await File.WriteAllBytesAsync(Path.Combine(OutputDir, $"{track}.flac"), trackData);
+        // TODO: could use variables like deemixgui to setup custom export pathing
+
+        string artistFolderPath = Path.Combine(OutputDir, CleanPath(page["DATA"]!["ART_NAME"]!.ToString()));
+        if (!Directory.Exists(artistFolderPath))
+            Directory.CreateDirectory(artistFolderPath);
+
+        string albumFolderPath = Path.Combine(artistFolderPath, CleanPath(page["DATA"]!["ALB_TITLE"]!.ToString()));
+        if (!Directory.Exists(albumFolderPath))
+            Directory.CreateDirectory(albumFolderPath);
+
+        string title = CleanPath(page["DATA"]!["SNG_TITLE"]!.ToString());
+        int trackNum = int.Parse(page["DATA"]!["TRACK_NUMBER"]!.ToString());
+        string ext = PreferredBitrate == Bitrate.FLAC ? "flac" : "mp3";
+        string outPath = Path.Combine(albumFolderPath, $"{trackNum:00} - {title}.{ext}");
+
+        await File.WriteAllBytesAsync(outPath, trackData);
+
+        console.Output.WriteLine($"Finished track {track}...");
+    }
+
+    private string CleanPath(string str)
+    {
+        char[] invalid = Path.GetInvalidFileNameChars();
+        for (int i = 0; i < invalid.Length; i++)
+        {
+            char c = invalid[i];
+            str = str.Replace(c, '_');
+        }
+        return str;
     }
 }
