@@ -48,6 +48,7 @@ public class Downloader
         DateTime releaseDate = DateTime.Parse(page["DATA"]!["PHYSICAL_RELEASE_DATE"]!.ToString());
         track.Tag.Year = (uint)releaseDate.Year;
         track.Tag.Track = uint.Parse(page["DATA"]!["TRACK_NUMBER"]!.ToString());
+        track.Tag.TrackCount = uint.Parse(albumPage["SONGS"]!["total"]!.ToString());
         track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
         // i have yet to find an album without a genre attached, but this may still break at some point
         track.Tag.Genres = publicAlbum["genres"]!["data"]!.Select(a => a["name"]!.ToString()).ToArray();
