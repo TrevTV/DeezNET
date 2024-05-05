@@ -45,6 +45,7 @@ public class Downloader
         track.Tag.Year = (uint)releaseDate.Year;
         track.Tag.Track = uint.Parse(page["DATA"]!["TRACK_NUMBER"]!.ToString());
         track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
+        // i have yet to find an album without a genre attached, but this may still break at some point
         track.Tag.Genres = publicAlbum["genres"]!["data"]!.Select(a => a["name"]!.ToString()).ToArray();
 
         track.Save();
@@ -85,9 +86,13 @@ public class Downloader
 
     private async Task<TrackUrls> GetTrackUrl(string token, Bitrate bitrate)
     {
+        // with the order of this being called, this should never really be needed, but it ensures safety
+        if (_gw.ActiveUserData == null)
+            await _gw.SetToken();
+
         GetUrlRequestBody reqData = new()
         {
-            LicenseToken = _gw.ActiveUserData["USER"]!["OPTIONS"]!["license_token"]!.ToString(),
+            LicenseToken = _gw.ActiveUserData!["USER"]!["OPTIONS"]!["license_token"]!.ToString(),
             TrackTokens = [token],
             Media =
             [

@@ -355,7 +355,6 @@ public class PublicApi
     private async Task<JToken> Call(string method, Dictionary<string, string>? parameters = null)
     {
         parameters ??= [];
-        // TODO: parameters["access_token"] = _accessToken;
 
         StringBuilder stringBuilder = new("https://api.deezer.com/" + method);
         for (int i = 0; i < parameters.Count; i++)

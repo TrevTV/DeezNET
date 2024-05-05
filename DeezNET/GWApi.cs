@@ -15,13 +15,13 @@ public class GWApi
         _apiToken = "null"; // this doesn't necessarily need to be null; used for deezer.getUserData
     }
 
-    public JToken ActiveUserData { get => _activeUserData; }
+    public JToken? ActiveUserData { get => _activeUserData; }
     internal string ARL { get => _arl; set => _arl = value; }
 
     private HttpClient _client;
     private string _arl;
     private string _apiToken;
-    private JToken _activeUserData;
+    private JToken? _activeUserData;
 
     internal async Task SetToken()
     {
