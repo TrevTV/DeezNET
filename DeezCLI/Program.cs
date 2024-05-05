@@ -6,6 +6,7 @@ using DeezNET.Data;
 using DeezNET.Exceptions;
 using Newtonsoft.Json.Linq;
 using Spectre.Console;
+using System.Text;
 
 namespace DeezCLI;
 
@@ -41,6 +42,12 @@ public class DownloadCommand : ICommand
 
     [CommandOption("concurrent", 'c', Description = "The max amount of allowed concurrent track downloads.")]
     public int Concurrent { get; init; } = 3;
+
+    [CommandOption("folder-template", 'd', Description = "The folder path template to use when saving tracks to file.")]
+    public string FolderTemplate { get; init; } = "%albumartist%/%album%/";
+
+    [CommandOption("file-template", 'f', Description = "The file path template to use when saving tracks to file.")]
+    public string FileTemplate { get; init; } = "%track% - %title%.%ext%";
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -85,6 +92,7 @@ public class DownloadCommand : ICommand
     private async Task DoDownload(IAnsiConsole console, DeezerClient client, long track)
     {
         JToken page = await client.GWApi.GetTrackPage(track);
+        JToken albumPage = await client.GWApi.GetAlbumPage(page["DATA"]!["ALB_ID"]!.Value<long>());
         string songTitle = page["DATA"]!["SNG_TITLE"]!.ToString();
         string artistName = page["DATA"]!["ART_NAME"]!.ToString();
         string albumTitle = page["DATA"]!["ALB_TITLE"]!.ToString();
@@ -100,24 +108,40 @@ public class DownloadCommand : ICommand
         if (Metadata)
             trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData);
 
-        // TODO: could use variables like deemixgui to setup custom export pathing
-
-        string artistFolderPath = Path.Combine(OutputDir, CleanPath(artistName));
-        if (!Directory.Exists(artistFolderPath))
-            Directory.CreateDirectory(artistFolderPath);
-
-        string albumFolderPath = Path.Combine(artistFolderPath, CleanPath(albumTitle));
-        if (!Directory.Exists(albumFolderPath))
-            Directory.CreateDirectory(albumFolderPath);
-
-        string title = CleanPath(songTitle);
-        int trackNum = (int)page["DATA"]!["TRACK_NUMBER"]!;
-        string ext = PreferredBitrate == Bitrate.FLAC ? "flac" : "mp3";
-        string outPath = Path.Combine(albumFolderPath, $"{trackNum:00} - {title}.{ext}");
+        string outPath = Path.Combine(OutputDir, GetFilledTemplate(FolderTemplate, page, albumPage));
+        if (!Directory.Exists(outPath))
+            Directory.CreateDirectory(outPath);
+        outPath = Path.Combine(outPath, GetFilledTemplate(FileTemplate, page, albumPage));
 
         await File.WriteAllBytesAsync(outPath, trackData);
 
         console.MarkupLine($"[yellow][[#]] Track[/] {track} [yellow]downloaded.[/]");
+    }
+
+    private string GetFilledTemplate(string template, JToken page, JToken albumPage)
+    {
+        StringBuilder t = new(template);
+        ReplaceC("%title%", page["DATA"]!["SNG_TITLE"]!.ToString());
+        ReplaceC("%album%", page["DATA"]!["ALB_TITLE"]!.ToString());
+        ReplaceC("%albumartist%", albumPage["DATA"]!["ART_NAME"]!.ToString());
+        ReplaceC("%artist%", page["DATA"]!["ART_NAME"]!.ToString());
+        ReplaceC("%albumartists%", string.Join("; ", albumPage["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString())));
+        ReplaceC("%artists%", string.Join("; ", page["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString())));
+        ReplaceC("%track%", $"{(int)page["DATA"]!["TRACK_NUMBER"]!:00}");
+        ReplaceC("%trackcount%", albumPage["SONGS"]!["total"]!.ToString());
+        ReplaceC("%trackid%", page["DATA"]!["SNG_ID"]!.ToString());
+        ReplaceC("%albumid%", page["DATA"]!["ALB_ID"]!.ToString());
+        ReplaceC("%artistid%", page["DATA"]!["ART_ID"]!.ToString());
+        
+        t.Replace("%ext%", PreferredBitrate == Bitrate.FLAC ? "flac" : "mp3");
+        DateTime releaseDate = DateTime.Parse(page["DATA"]!["PHYSICAL_RELEASE_DATE"]!.ToString());
+        t.Replace("%year%", releaseDate.Year.ToString());
+        return t.ToString();
+
+        void ReplaceC(string o, string r)
+        {
+            t.Replace(o, CleanPath(r));
+        }
     }
 
     private static string CleanPath(string str)

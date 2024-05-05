@@ -86,8 +86,27 @@ OPTIONS
   -a|--arl          The account ARL to download with. A paid plan allows for higher quality downloads. Some regions do not have full tracks available without a premium account. Default: "".
   -l|--top-limit    The max amount of tracks to download. Only applicable when downloading an artist's top tracks. Default: "100".
   -c|--concurrent   The max amount of allowed concurrent track downloads. Default: "3".
+  -d|--folder-template  The folder path template to use when saving tracks to file. Default: "%albumartist%/%album%/".
+  -f|--file-template  The file path template to use when saving tracks to file. Default: "%track% - %title%.%ext%".
   -h|--help         Shows help text.
   --version         Shows version information.
+```
+
+```
+AVAILABLE TEMPLATE VARIABLES
+  %title%
+  %album%
+  %albumartist%
+  %artist%
+  %albumartists%
+  %artists%
+  %track%
+  %trackcount%
+  %trackid%
+  %albumid%
+  %artistid%
+  %ext%
+  %year%
 ```
 
 ## Credits
