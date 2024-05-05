@@ -8,16 +8,14 @@ namespace DeezNET;
 
 public class Downloader
 {
-    internal Downloader(HttpClient client, string arl, GWApi gw, PublicApi publicApi)
+    internal Downloader(HttpClient client, GWApi gw, PublicApi publicApi)
     {
         _client = client;
-        _arl = arl;
         _gw = gw;
         _publicApi = publicApi;
     }
 
     private HttpClient _client;
-    private string _arl;
     private GWApi _gw;
     private PublicApi _publicApi;
 
@@ -118,7 +116,7 @@ public class Downloader
             Content = stringContent
         };
 
-        request.Headers.Add("Cookie", "arl=" + _arl);
+        request.Headers.Add("Cookie", "arl=" + _gw.ARL);
 
         HttpResponseMessage response = await _client.SendAsync(request);
 

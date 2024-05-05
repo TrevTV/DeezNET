@@ -25,6 +25,9 @@ public class GWApi
 
     internal async Task SetToken()
     {
+        if (string.IsNullOrEmpty(_arl))
+            return;
+
         JToken userData = await GetUserData();
         _activeUserData = userData;
         _apiToken = userData["checkForm"]!.ToString();

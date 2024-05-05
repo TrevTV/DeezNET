@@ -18,7 +18,7 @@ public class DeezerClient
 
         _gwApi = new(_client, arl);
         _publicApi = new(_client);
-        _downloader = new(_client, arl, _gwApi, _publicApi);
+        _downloader = new(_client, _gwApi, _publicApi);
     }
 
     public async Task UpdateARL(string arl)
