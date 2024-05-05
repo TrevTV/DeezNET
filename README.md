@@ -1,4 +1,6 @@
 # DeezNET
+[![Version](https://img.shields.io/nuget/v/DeezNET.svg)](https://nuget.org/packages/DeezNET)
+
 A .NET Deezer API wrapper and track downloading library. There's a CLI tool in there as well.
 
 This library hasn't been super tested, but it's not that complex so it should be fine.
