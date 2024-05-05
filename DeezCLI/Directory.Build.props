@@ -1,0 +1,9 @@
+﻿<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Company>TrevTV</Company>
+    <Copyright>Copyright (C) Trevor Jackson</Copyright>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
