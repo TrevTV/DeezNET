@@ -81,7 +81,7 @@ public class DownloadCommand : ICommand
         console.Output.WriteLine($"Downloading track {track}...");
 
         JToken page = await client.GWApi.GetTrackPage(track);
-        byte[] trackData = await client.Downloader.GetRawTrackBytes(track, PreferredBitrate, Bitrate.MP3_320); // TODO: improve fallback
+        byte[] trackData = await client.Downloader.GetRawTrackBytes(track, PreferredBitrate, Downloader.GetLowerFallbackBitrate(PreferredBitrate));
         if (Metadata)
         {
             trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData);

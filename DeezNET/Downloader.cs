@@ -82,6 +82,17 @@ public class Downloader
         return outStream.ToArray();
     }
 
+    public static Bitrate GetLowerFallbackBitrate(Bitrate bitrate)
+    {
+        return bitrate switch
+        {
+            Bitrate.FLAC => Bitrate.MP3_320,
+            Bitrate.MP3_320 => Bitrate.MP3_128,
+            Bitrate.MP3_128 => Bitrate.MP3_320,
+            _ => throw new NotImplementedException()
+        };
+    }
+
     private async Task<TrackUrls> GetTrackUrl(string token, Bitrate bitrate)
     {
         // with the order of this being called, this should never really be needed, but it ensures safety
