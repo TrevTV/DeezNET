@@ -147,7 +147,7 @@ public class Downloader
             Content = stringContent
         };
 
-        request.Headers.Add("Cookie", "arl=" + _gw.ARL);
+        request.Headers.Add("Cookie", "arl=" + _gw._arl);
 
         HttpResponseMessage response = await _client.SendAsync(request);
 

@@ -39,6 +39,7 @@ public class DeezerClient
     public Downloader Downloader { get => _downloader; }
     public GWApi GWApi { get => _gwApi; }
     public PublicApi PublicApi { get => _publicApi; }
+    public string ActiveARL { get => _arl; }
 
     private Downloader _downloader;
     private HttpClient _client;
