@@ -5,35 +5,34 @@ public class DeezerClient
     /// <summary>
     /// Creates a new DeezerClient.
     /// </summary>
-    /// <param name="arl">A Deezer account access token. Only needed for downloading and using the GWApi.</param>
-    /// <returns>A new DeezerClient.</returns>
-    public static async Task<DeezerClient> Create(string arl = "")
+    public DeezerClient()
     {
-        DeezerClient client = new(arl);
-        await client._gwApi.SetToken();
-        return client;
-    }
-
-    private DeezerClient(string arl)
-    {
-        _arl = arl;
+        _arl = "";
 
         _client = new HttpClient();
         _client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
 
-        _gwApi = new(_client, arl);
+        _gwApi = new(_client, _arl);
         _publicApi = new(_client);
         _downloader = new(_client, _gwApi, _publicApi);
     }
 
     /// <summary>
-    /// Changes the internal ARL and refreshes the API token.
+    /// Sets the internal ARL and refreshes the API token.
+    /// Passing a null, empty, or whitespace string will remove the ARL and API token from the GWApi.
     /// </summary>
     /// <param name="arl">A Deezer account access token.</param>
-    public async Task UpdateARL(string arl)
+    public async Task SetARL(string arl)
     {
+        if (string.IsNullOrWhiteSpace(arl))
+        {
+            _arl = "";
+            _gwApi._arl = "";
+            _gwApi._apiToken = "null";
+        }
+
         _arl = arl;
-        _gwApi.ARL = arl;
+        _gwApi._arl = arl;
         await _gwApi.SetToken();
     }
 

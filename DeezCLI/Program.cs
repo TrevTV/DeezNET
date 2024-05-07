@@ -58,7 +58,9 @@ public class DownloadCommand : ICommand
             Out = new AnsiConsoleOutput(console.Output)
         });
 
-        var client = await DeezerClient.Create(ARL);
+        DeezerClient client = new();
+        await client.SetARL(ARL);
+
         if (DeezerURL.TryParse(URL, out DeezerURL parsedUrl))
         {
             long[] tracks = await parsedUrl.GetAssociatedTracks(client, TopLimit);
