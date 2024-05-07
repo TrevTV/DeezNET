@@ -30,7 +30,7 @@ In addition to `DeezerClient`, there is `DeezerURL` which is a class for parsing
 
 ### Getting Track Info (`PublicApi`)
 ```cs
-var client = await DeezerClient.Create();
+var client = new DeezerClient();
 var trackData = await client.PublicApi.GetTrack(1903638027);
 Console.WriteLine($"{trackData["title"]!} by {trackData["contributors"]!.First()["name"]!}");
 // Output: Let You Down by Dawid Podsiadło
@@ -38,7 +38,8 @@ Console.WriteLine($"{trackData["title"]!} by {trackData["contributors"]!.First()
 
 ### Getting Track Info (`GWApi`)
 ```cs
-var client = await DeezerClient.Create("[ARL]");
+var client = new DeezerClient();
+await client.SetARL("[ARL]");
 var trackData = await client.GWApi.GetTrack(1903638027);
 Console.WriteLine($"{trackData["SNG_TITLE"]!} by {trackData["ART_NAME"]!}");
 // Output: Let You Down by Dawid Podsiadło
@@ -46,7 +47,8 @@ Console.WriteLine($"{trackData["SNG_TITLE"]!} by {trackData["ART_NAME"]!}");
 
 ### Downloading a Track by ID
 ```cs
-var client = await DeezerClient.Create("[ARL]");
+var client = new DeezerClient();
+await client.SetARL("[ARL]");
 var trackBytes = await client.Downloader.GetRawTrackBytes(1903638027, DeezNET.Data.Bitrate.FLAC);
 trackBytes = await client.Downloader.ApplyMetadataToTrackBytes(1903638027, trackBytes); // if you want metadata
 File.WriteAllBytes(Path.Combine(Environment.CurrentDirectory, "LYD.flac"), trackBytes);
@@ -55,7 +57,8 @@ File.WriteAllBytes(Path.Combine(Environment.CurrentDirectory, "LYD.flac"), track
 
 ### Downloading an Album by URL
 ```cs
-var client = await DeezerClient.Create("[ARL]");
+var client = new DeezerClient();
+await client.SetARL("[ARL]");
 var urlData = DeezerURL.Parse("https://deezer.page.link/uwdUFsjkJbGkngSm7"); // this is a short URL, can also be a full one like "https://www.deezer.com/us/album/548556802"
 var tracksInAlbum = await urlData.GetAssociatedTracks(client);
 
