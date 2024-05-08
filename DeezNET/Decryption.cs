@@ -10,7 +10,7 @@ namespace DeezNET;
 
 internal static class Decryption
 {
-    public static void DecodeTrackStream(Stream input, Stream output, bool isCrypted, string blowfishKey)
+    public static async Task DecodeTrackStream(Stream input, Stream output, bool isCrypted, string blowfishKey)
     {
         bool isStart = true;
 
@@ -37,7 +37,7 @@ internal static class Decryption
 
             isStart = false;
 
-            output.Write(buffer, 0, buffer.Length);
+            await output.WriteAsync(buffer);
         }
     }
 

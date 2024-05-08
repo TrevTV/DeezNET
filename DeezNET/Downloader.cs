@@ -35,12 +35,40 @@ public class Downloader
         JToken albumPage = await _gw.GetAlbumPage(albumId);
         JToken publicAlbum = await _publicApi.GetAlbum(albumId);
 
-        byte[] albumArt = await _client.GetByteArrayAsync(string.Format(CDN_TEMPLATE, page["DATA"]!["ALB_PICTURE"]!.ToString(), 512));
-
         string ext = Enumerable.SequenceEqual(trackData[0..4], FLAC_MAGIC) ? ".flac" : ".mp3";
 
         FileBytesAbstraction abstraction = new("track" + ext, trackData);
         TagLib.File track = TagLib.File.Create(abstraction);
+        await ApplyMetadataToTagLibFile(page, albumPage, publicAlbum, track);
+
+        byte[] attached = abstraction.MemoryStream.ToArray();
+
+        abstraction.MemoryStream.Dispose();
+        track.Dispose();
+        return attached;
+    }
+
+    /// <summary>
+    /// Applies ID3 metadata to the given file.
+    /// </summary>
+    /// <param name="trackId">The track ID to base metadata on.</param>
+    /// <param name="trackPath">The track file path to apply the metadata to.</param>
+    /// <returns>The modified track data</returns>
+    public async Task ApplyMetadataToTrackAtPath(long trackId, string trackPath)
+    {
+        JToken page = await _gw.GetTrackPage(trackId);
+        long albumId = long.Parse(page["DATA"]!["ALB_ID"]!.ToString());
+        JToken albumPage = await _gw.GetAlbumPage(albumId);
+        JToken publicAlbum = await _publicApi.GetAlbum(albumId);
+
+        using TagLib.File track = TagLib.File.Create(trackPath);
+        await ApplyMetadataToTagLibFile(page, albumPage, publicAlbum, track);
+    }
+
+    private async Task ApplyMetadataToTagLibFile(JToken page, JToken albumPage, JToken publicAlbum, TagLib.File track)
+    {
+        byte[] albumArt = await _client.GetByteArrayAsync(string.Format(CDN_TEMPLATE, page["DATA"]!["ALB_PICTURE"]!.ToString(), 512));
+
         track.Tag.Title = page["DATA"]!["SNG_TITLE"]!.ToString();
         track.Tag.Album = page["DATA"]!["ALB_TITLE"]!.ToString();
         track.Tag.Performers = page["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString()).ToArray();
@@ -54,16 +82,11 @@ public class Downloader
         track.Tag.Genres = publicAlbum["genres"]!["data"]!.Select(a => a["name"]!.ToString()).ToArray();
 
         track.Save();
-
-        byte[] attached = abstraction.MemoryStream.ToArray();
-
-        abstraction.MemoryStream.Dispose();
-        track.Dispose();
-        return attached;
     }
 
     /// <summary>
     /// Downloads and decrypts track data for a given ID and bitrate.
+    /// This method uses more memory than <seealso cref="DownloadTrackToPath(long, string, Bitrate, Bitrate?)">DownloadTrackToPath</seealso> as it stores everything in memory.
     /// </summary>
     /// <param name="trackId">The track ID to download.</param>
     /// <param name="bitrate">The preferred bitrate to download.</param>
@@ -92,9 +115,48 @@ public class Downloader
         string blowfishKey = Decryption.GenerateBlowfishKey(trackId.ToString());
         bool isCrypted = encryptedUri.ToString().Contains("/mobile/") || encryptedUri.ToString().Contains("/media/");
 
-        Decryption.DecodeTrackStream(stream, outStream, isCrypted, blowfishKey);
+        await Decryption.DecodeTrackStream(stream, outStream, isCrypted, blowfishKey);
 
         return outStream.ToArray();
+    }
+
+    /// <summary>
+    /// Downloads and decrypts track data for a given ID and bitrate, saving it to the given path.
+    /// </summary>
+    /// <param name="trackId">The track ID to download.</param>
+    /// <param name="outputPath">The path to save the track to. This path will also be used for temporary data storage.</param>
+    /// <param name="bitrate">The preferred bitrate to download.</param>
+    /// <param name="fallback">The secondary bitrate choice if the preferred is unavailable.</param>
+    /// <returns>The raw track data.</returns>
+    /// <exception cref="NoSourcesAvailableException"></exception>
+    public async Task DownloadTrackToPath(long trackId, string outputPath, Bitrate bitrate, Bitrate? fallback = null)
+    {
+        JToken page = await _gw.GetTrackPage(trackId);
+        TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate);
+
+        Uri? encryptedUri = urls.Data.FirstOrDefault()?.Media.FirstOrDefault()?.Sources.FirstOrDefault()?.Url;
+        if (encryptedUri == null)
+        {
+            if (fallback != null)
+                await DownloadTrackToPath(trackId, outputPath, fallback.Value);
+            throw new NoSourcesAvailableException($"Track ID {trackId} has no available media sources for bitrate {bitrate}.");
+        }
+
+        HttpRequestMessage message = new(HttpMethod.Get, encryptedUri);
+        HttpResponseMessage response = await _client.SendAsync(message);
+        Stream stream = await response.Content.ReadAsStreamAsync();
+
+        /*using FileStream tempFileStream = File.Open(outputPath + ".tmp", FileMode.OpenOrCreate);
+        await stream.CopyToAsync(tempFileStream);*/
+
+        FileStream outStream = File.OpenWrite(outputPath);
+
+        string blowfishKey = Decryption.GenerateBlowfishKey(trackId.ToString());
+        bool isCrypted = encryptedUri.ToString().Contains("/mobile/") || encryptedUri.ToString().Contains("/media/");
+
+        await Decryption.DecodeTrackStream(stream, outStream, isCrypted, blowfishKey);
+
+        outStream.Close();
     }
 
     /// <summary>
@@ -157,6 +219,7 @@ public class Downloader
         JToken? errors = json["errors"];
         if (errors != null && errors.Any())
         {
+            // TODO: handle "License token has no sufficient rights on requested media." message
             throw new Exception(errors[0]!["message"]!.ToString());
         }
 

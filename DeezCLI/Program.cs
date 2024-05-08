@@ -105,17 +105,16 @@ public class DownloadCommand : ICommand
         console.MarkupLine($"[bold yellow]ALBUM:[/] {albumTitle}");
         console.Write(new Rule());
 
-
-        byte[] trackData = await client.Downloader.GetRawTrackBytes(track, PreferredBitrate, Downloader.GetLowerFallbackBitrate(PreferredBitrate));
-        if (Metadata)
-            trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData);
-
         string outPath = Path.Combine(OutputDir, GetFilledTemplate(FolderTemplate, page, albumPage));
         if (!Directory.Exists(outPath))
             Directory.CreateDirectory(outPath);
         outPath = Path.Combine(outPath, GetFilledTemplate(FileTemplate, page, albumPage));
 
-        await File.WriteAllBytesAsync(outPath, trackData);
+        await client.Downloader.DownloadTrackToPath(track, outPath, PreferredBitrate, Downloader.GetLowerFallbackBitrate(PreferredBitrate));
+        if (Metadata)
+            await client.Downloader.ApplyMetadataToTrackAtPath(track, outPath);
+
+        //await File.WriteAllBytesAsync(outPath, trackData);
 
         console.MarkupLine($"[yellow][[#]] Track[/] {track} [yellow]downloaded.[/]");
     }
