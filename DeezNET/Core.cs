@@ -1,4 +1,6 @@
-﻿namespace DeezNET;
+﻿[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DeezNET.Tests")]
+
+namespace DeezNET;
 
 public class DeezerClient
 {

@@ -16,11 +16,10 @@ public class GWApi
     }
 
     public JToken? ActiveUserData { get => _activeUserData; }
-    internal string ARL { get => _arl; set => _arl = value; }
 
+    internal string _arl;
+    internal string _apiToken;
     private HttpClient _client;
-    private string _arl;
-    private string _apiToken;
     private JToken? _activeUserData;
 
     internal async Task SetToken()
