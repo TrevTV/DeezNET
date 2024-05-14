@@ -120,7 +120,7 @@ public class DownloadCommand : ICommand
             if (!File.Exists(artOut))
             {
                 byte[] bigArt = await client.Downloader.GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), 1024);
-                await File.WriteAllBytesAsync(, bigArt);
+                await File.WriteAllBytesAsync(artOut, bigArt);
             }
         }
         catch (UnavailableArtException) { }
