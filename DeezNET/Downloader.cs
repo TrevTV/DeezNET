@@ -28,14 +28,15 @@ public class Downloader
     /// <param name="trackId">The track ID to base metadata on.</param>
     /// <param name="trackData">The track byte data to apply the metadata to.</param>
     /// <returns>The modified track data</returns>
-    public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData)
+    public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData, int coverResolution = 512)
     {
         JToken page = await _gw.GetTrackPage(trackId);
         long albumId = long.Parse(page["DATA"]!["ALB_ID"]!.ToString());
         JToken albumPage = await _gw.GetAlbumPage(albumId);
         JToken publicAlbum = await _publicApi.GetAlbum(albumId);
 
-        byte[] albumArt = await _client.GetByteArrayAsync(string.Format(CDN_TEMPLATE, page["DATA"]!["ALB_PICTURE"]!.ToString(), 512));
+        byte[]? albumArt = null;
+        try { albumArt = await GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), coverResolution); } catch (UnavailableArtException) { }
 
         string ext = Enumerable.SequenceEqual(trackData[0..4], FLAC_MAGIC) ? ".flac" : ".mp3";
 
@@ -49,9 +50,11 @@ public class Downloader
         track.Tag.Year = (uint)releaseDate.Year;
         track.Tag.Track = uint.Parse(page["DATA"]!["TRACK_NUMBER"]!.ToString());
         track.Tag.TrackCount = uint.Parse(albumPage["SONGS"]!["total"]!.ToString());
-        track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
         // i have yet to find an album without a genre attached, but this may still break at some point
         track.Tag.Genres = publicAlbum["genres"]!["data"]!.Select(a => a["name"]!.ToString()).ToArray();
+
+        if (albumArt != null)
+            track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
 
         track.Save();
 
@@ -98,6 +101,26 @@ public class Downloader
     }
 
     /// <summary>
+    /// Retrieves the art data for the given ID and resolution.
+    /// </summary>
+    /// <param name="id">The art ID.</param>
+    /// <param name="resolution">The resolution for the image. Unavailable sizes will throw an UnavailableArtException.</param>
+    /// <returns>The byte data of the art.</returns>
+    /// <exception cref="UnavailableArtException">Occurs when the given art ID or resolution is unavailable.</exception>
+    public async Task<byte[]> GetArtBytes(string id, int resolution)
+    {
+        HttpRequestMessage message = new(HttpMethod.Get, GetCDNUrl(id, resolution));
+        HttpResponseMessage response = await _client.SendAsync(message);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            throw new UnavailableArtException($"The art with {id} with resolution {resolution} is unavailable.");
+        }
+
+        return await response.Content.ReadAsByteArrayAsync();
+    }
+
+    /// <summary>
     /// Returns a different bitrate to act as a fallback.
     /// </summary>
     /// <param name="bitrate">The preferred bitrate.</param>
@@ -111,6 +134,17 @@ public class Downloader
             Bitrate.MP3_128 => Bitrate.MP3_320,
             _ => throw new NotImplementedException()
         };
+    }
+
+    /// <summary>
+    /// Gets the CDN url for a given art ID.
+    /// </summary>
+    /// <param name="id">The art ID.</param>
+    /// <param name="resolution">The resolution for the image. Unavailable sizes will return a 403 on request.</param>
+    /// <returns>The CDN url.</returns>
+    public static string GetCDNUrl(string id, int resolution)
+    {
+        return string.Format(CDN_TEMPLATE, id, resolution);
     }
 
     private async Task<TrackUrls> GetTrackUrl(string token, Bitrate bitrate)

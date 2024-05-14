@@ -113,6 +113,18 @@ public class DownloadCommand : ICommand
         string outPath = Path.Combine(OutputDir, GetFilledTemplate(FolderTemplate, page, albumPage));
         if (!Directory.Exists(outPath))
             Directory.CreateDirectory(outPath);
+
+        try
+        {
+            string artOut = Path.Combine(outPath, "folder.jpg");
+            if (!File.Exists(artOut))
+            {
+                byte[] bigArt = await client.Downloader.GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), 1024);
+                await File.WriteAllBytesAsync(, bigArt);
+            }
+        }
+        catch (UnavailableArtException) { }
+
         outPath = Path.Combine(outPath, GetFilledTemplate(FileTemplate, page, albumPage));
 
         await File.WriteAllBytesAsync(outPath, trackData);
