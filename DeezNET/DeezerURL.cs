@@ -77,7 +77,7 @@ public class DeezerURL(string url, EntityType type, long id)
         if (url.Contains("/track/"))
         {
             type = EntityType.Track;
-            rawId = Regex.Match(url, "/track/(.+)").Groups[1].Value;
+            rawId = Regex.Match(url, "/track/(\\d+)").Groups[1].Value;
         }
         else if (url.Contains("/playlist/"))
         {
@@ -87,7 +87,7 @@ public class DeezerURL(string url, EntityType type, long id)
         else if (url.Contains("/album/"))
         {
             type = EntityType.Album;
-            rawId = Regex.Match(url, "/album/(.+)").Groups[1].Value;
+            rawId = Regex.Match(url, "/album/(\\d+)").Groups[1].Value;
         }
         else if (url.Contains("/artist/") && url.Contains("/top_track"))
         {
