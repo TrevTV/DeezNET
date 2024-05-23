@@ -1,4 +1,5 @@
-﻿using DeezNET.Exceptions;
+﻿using DeezNET.Data;
+using DeezNET.Exceptions;
 using Newtonsoft.Json.Linq;
 using System.Net;
 using System.Text;
@@ -310,7 +311,7 @@ public class PublicApi
         return query.ToString().Trim();
     }
 
-    private Dictionary<string, string> GenerateSearchArgs(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    private Dictionary<string, string> GenerateSearchArgs(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
     {
         Dictionary<string, string> args = new()
         {
@@ -328,28 +329,28 @@ public class PublicApi
         return args;
     }
 
-    public async Task<JToken> Search(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> Search(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Call("search", GenerateSearchArgs(query, strict, order, index, limit));
 
-    public async Task<JToken> SearchAdvanced(string? artist = null, string? album = null, string? track = null, string? label = null, int? durMin = null, int? durMax = null, int? bpmMin = null, int? bpmMax = null, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> SearchAdvanced(string? artist = null, string? album = null, string? track = null, string? label = null, int? durMin = null, int? durMax = null, int? bpmMin = null, int? bpmMax = null, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Search(GenerateAdvancedSearchQuery(artist, album, track, label, durMin, durMax, bpmMin, bpmMax), strict, order, index, limit);
 
-    public async Task<JToken> SearchAlbum(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> SearchAlbum(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Call("search/album", GenerateSearchArgs(query, strict, order, index, limit));
 
-    public async Task<JToken> SearchArtist(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> SearchArtist(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Call("search/artist", GenerateSearchArgs(query, strict, order, index, limit));
 
-    public async Task<JToken> SearchPlaylist(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> SearchPlaylist(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Call("search/playlist", GenerateSearchArgs(query, strict, order, index, limit));
 
-    public async Task<JToken> SearchRadio(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> SearchRadio(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Call("search/radio", GenerateSearchArgs(query, strict, order, index, limit));
 
-    public async Task<JToken> SearchTrack(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> SearchTrack(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Call("search/track", GenerateSearchArgs(query, strict, order, index, limit));
 
-    public async Task<JToken> SearchUser(string query, bool strict = false, SearchOption? order = null, int index = 0, int limit = 25)
+    public async Task<JToken> SearchUser(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
         => await Call("search/user", GenerateSearchArgs(query, strict, order, index, limit));
 
     private async Task<JToken> Call(string method, Dictionary<string, string>? parameters = null)
