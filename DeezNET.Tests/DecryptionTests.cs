@@ -1,6 +1,4 @@
-using Xunit;
 using Shouldly;
-using Org.BouncyCastle.Crypto.Paddings;
 
 namespace DeezNET.Tests
 {
@@ -31,6 +29,7 @@ namespace DeezNET.Tests
         [InlineData("29373181", "3je>g7w15s&?:ogb")]
         [InlineData("89770389", "545bfj,07vvgmjna")]
         [InlineData("1233123", "e37`e;vggsrloe3:")]
+        [InlineData("2748723201", "fii;ih'61)r4l36c")]
         public void GenerateBlowfishKeyTest(string input, string key)
         {
             Decryption.GenerateBlowfishKey(input).ShouldBe(key);
@@ -45,9 +44,23 @@ namespace DeezNET.Tests
             decrypted[0..4].ShouldBeEquivalentTo("fLaC"u8.ToArray());
         }
 
-        [Fact]
-        public void DecodeTrackStreamTest()
+        [Theory]
+        [EmbeddedResourceData("DeezNET.Tests/Data/DecodeTrackStreamTest/2748723201_chunk_one.dat")]
+        public void DecodeTrackStreamTest(byte[] chunkData)
         {
+            // Data from FLAC "Favorite Part" by Friday Pilots Club, track ID 2748723201
+            // Blowfish key generated from same ID
+            using MemoryStream stream = new(chunkData);
+            using MemoryStream outStream = new();
+            Decryption.DecodeTrackStream(stream, outStream, true, "fii;ih'61)r4l36c");
+
+            outStream.Position = 0;
+
+            // we are just comparing the fLaC magic
+            byte[] buffer = new byte[4];
+            outStream.Read(buffer, 0, buffer.Length);
+
+            buffer.ShouldBeEquivalentTo("fLaC"u8.ToArray());
         }
     }
 }
