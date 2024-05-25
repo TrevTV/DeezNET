@@ -149,8 +149,8 @@ public class DeezerURL(string url, EntityType type, long id)
                     long[] albumIds = (await client.PublicApi.GetArtistAlbums(Id))["data"]!.Select(a => (long)a["id"]!).ToArray();
                     List<long> trackIds = [];
                     for (int i = 0; i < albumIds.Length; i++)
-                        trackIds.AddRange((await client.PublicApi.GetAlbumTracks(Id))["data"]!.Select(t => (long)t["id"]!));
-                    return trackIds.ToArray();
+                        trackIds.AddRange((await client.PublicApi.GetAlbumTracks(albumIds[i]))["data"]!.Select(t => (long)t["id"]!));
+                    return [.. trackIds];
                 }
         }
 
