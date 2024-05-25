@@ -43,5 +43,34 @@ namespace DeezNET.Tests
             else
                 data.ShouldBeNull();
         }
+
+
+        // i don't know if these short urls expire
+        [Theory]
+        [InlineData("https://deezer.page.link/PjpK8Ywdavbpn9FA8", "https://www.deezer.com/track/29373181?host=3103984544&utm_campaign=clipboard-generic&utm_source=user_sharing&utm_content=track-29373181&deferredFl=1")]
+        [InlineData("https://deezer.page.link/27ms3uwmnFK63wsQ6", "https://www.deezer.com/album/548556802?host=3103984544&utm_campaign=clipboard-generic&utm_source=user_sharing&utm_content=album-548556802&deferredFl=1")]
+        [InlineData("https://deezer.page.link/fWTjmEWup6dpU7wU9", "https://www.deezer.com/album/77654472?host=3103984544&utm_campaign=clipboard-generic&utm_source=user_sharing&utm_content=album-77654472&deferredFl=1")]
+        public void UnshortenURLTest(string shortened, string expected)
+        {
+            string unshort = DeezerURL.UnshortenURL(shortened);
+            unshort.ShouldBe(expected);
+        }
+
+        // it's very possible for the Artist and ArtistTop values to change later
+        [Theory]
+        [InlineData("https://www.deezer.com/en/track/13787884", new long[] { 13787884 })]
+        [InlineData("https://www.deezer.com/en/album/509603971", new long[] { 2531592621, 2531592631, 2531592641, 2531592651, 2531592661 })]
+        [InlineData("https://www.deezer.com/en/playlist/12668949561", new long[] { 2664944792, 856599752, 134784964 })]
+        [InlineData("https://www.deezer.com/en/artist/11696461", new long[] { 938758732, 938758742, 938758752, 938758762, 938758772, 938758782, 938758792, 938758802, 938758812, 938758822, 140025373 })]
+        [InlineData("https://www.deezer.com/en/artist/11696461/top_track", new long[] { 140025373 })]
+        public async Task GetAssociatedTracksTest(string url, long[] associatedTracks)
+        {
+            DeezerClient cli = new();
+            var data = DeezerURL.Parse(url);
+
+            long[] actualTracks = await data.GetAssociatedTracks(cli);
+
+            actualTracks.ShouldBeEquivalentTo(associatedTracks);
+        }
     }
 }
