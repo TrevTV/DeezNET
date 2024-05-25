@@ -3,8 +3,6 @@
 
 A .NET Deezer API wrapper and track downloading library. There's a CLI tool in there as well.
 
-This library hasn't been super tested, but it's not that complex so it should be fine.
-
 ## Dear Deezer
 If you would like this repository to be taken down, please send me a cease and desist.<br>
 You may e-mail it to me here: [me@trev.app](mailto:me@trev.app).
