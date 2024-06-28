@@ -19,7 +19,7 @@ public class Downloader
     private GWApi _gw;
     private PublicApi _publicApi;
 
-    private const string CDN_TEMPLATE = "https://e-cdn-images.dzcdn.net/images/cover/{0}/{1}x{1}-000000-80-0-0.jpg";
+    internal const string CDN_TEMPLATE = "https://e-cdn-images.dzcdn.net/images/cover/{0}/{1}x{1}-000000-80-0-0.jpg";
     private readonly byte[] FLAC_MAGIC = "fLaC"u8.ToArray();
 
     /// <summary>
