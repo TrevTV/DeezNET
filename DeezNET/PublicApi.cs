@@ -1,7 +1,9 @@
 ﻿using DeezNET.Data;
 using DeezNET.Exceptions;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Net;
+using System.Reflection;
 using System.Text;
 
 namespace DeezNET;
@@ -15,9 +17,17 @@ public class PublicApi
 
     private HttpClient _client;
 
-    public async Task<JToken> GetAlbum(long albumId) => await Call($"album/{albumId}");
+    public async Task<JToken> GetAlbum(long albumId, int index = 0, int limit = -1) => await Call($"album/{albumId}", new()
+    {
+        ["index"] = index.ToString(),
+        ["limit"] = limit.ToString()
+    });
 
-    public async Task<JToken> GetAlbumByUPC(string upc) => await Call($"album/upc:{upc}");
+    public async Task<JToken> GetAlbumByUPC(string upc, int index = 0, int limit = -1) => await Call($"album/upc:{upc}", new()
+    {
+        ["index"] = index.ToString(),
+        ["limit"] = limit.ToString()
+    });
 
     public async Task<JToken> GetAlbumComments(long albumId, int index = 0, int limit = 10) => await Call($"album/{albumId}/comments", new()
     {
