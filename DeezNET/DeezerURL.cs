@@ -129,24 +129,24 @@ public class DeezerURL(string url, EntityType type, long id)
     /// <param name="client">The DeezerClient to use when contacting the API. No ARL is necessary.</param>
     /// <param name="topLimit">The max amount of tracks to return. Only applicable when EntityType is ArtistTop.</param>
     /// <returns></returns>
-    public async Task<long[]> GetAssociatedTracks(DeezerClient client, int topLimit = 100)
+    public async Task<long[]> GetAssociatedTracks(DeezerClient client, int topLimit = 100, CancellationToken token = default)
     {
         switch (EntityType)
         {
             case EntityType.Track:
                 return [Id];
             case EntityType.Playlist:
-                return (await client.PublicApi.GetPlaylistTracks(Id))["data"]!.Select(t => (long)t["id"]!).ToArray();
+                return (await client.PublicApi.GetPlaylistTracks(Id, token: token))["data"]!.Select(t => (long)t["id"]!).ToArray();
             case EntityType.Album:
-                return (await client.PublicApi.GetAlbumTracks(Id))["data"]!.Select(t => (long)t["id"]!).ToArray();
+                return (await client.PublicApi.GetAlbumTracks(Id, token: token))["data"]!.Select(t => (long)t["id"]!).ToArray();
             case EntityType.ArtistTop:
-                return (await client.PublicApi.GetArtistTop(Id, 0, topLimit))["data"]!.Select(t => (long)t["id"]!).ToArray();
+                return (await client.PublicApi.GetArtistTop(Id, 0, topLimit, token))["data"]!.Select(t => (long)t["id"]!).ToArray();
             case EntityType.Artist:
                 {
-                    long[] albumIds = (await client.PublicApi.GetArtistAlbums(Id))["data"]!.Select(a => (long)a["id"]!).ToArray();
+                    long[] albumIds = (await client.PublicApi.GetArtistAlbums(Id, token: token))["data"]!.Select(a => (long)a["id"]!).ToArray();
                     List<long> trackIds = [];
                     for (int i = 0; i < albumIds.Length; i++)
-                        trackIds.AddRange((await client.PublicApi.GetAlbumTracks(albumIds[i]))["data"]!.Select(t => (long)t["id"]!));
+                        trackIds.AddRange((await client.PublicApi.GetAlbumTracks(albumIds[i], token: token))["data"]!.Select(t => (long)t["id"]!));
                     return [.. trackIds];
                 }
         }
@@ -160,30 +160,30 @@ public class DeezerURL(string url, EntityType type, long id)
     /// <param name="client">The DeezerClient to use when contacting the API. No ARL is necessary.</param>
     /// <param name="resolution">The resolution to use in the returned cover URL.</param>
     /// <returns>A possibly null URL to the entity's cover.</returns>
-    private async Task<string?> GetCoverUrl(DeezerClient client, int resolution)
+    private async Task<string?> GetCoverUrl(DeezerClient client, int resolution, CancellationToken token = default)
     {
         long id = Id;
         switch (EntityType)
         {
             case EntityType.Track:
                 {
-                    var data = await client.PublicApi.GetTrack(id);
+                    var data = await client.PublicApi.GetTrack(id, token);
                     return string.Format(Downloader.CDN_TEMPLATE, data["md5_image"]!.ToString(), resolution);
                 }
             case EntityType.Album:
                 {
-                    var data = await client.PublicApi.GetAlbum(id);
+                    var data = await client.PublicApi.GetAlbum(id, token: token);
                     return string.Format(Downloader.CDN_TEMPLATE, data["md5_image"]!.ToString(), resolution);
                 }
             case EntityType.Artist:
             case EntityType.ArtistTop:
                 {
-                    var data = await client.PublicApi.GetArtist(id);
+                    var data = await client.PublicApi.GetArtist(id, token);
                     return data["picture_small"]!.ToString().Replace("56x56", $"{resolution}x{resolution}");
                 }
             case EntityType.Playlist:
                 {
-                    var data = await client.PublicApi.GetPlaylist(id);
+                    var data = await client.PublicApi.GetPlaylist(id, token);
                     return string.Format(Downloader.CDN_TEMPLATE, data["md5_image"]!.ToString(), resolution);
                 }
             default:
@@ -196,30 +196,30 @@ public class DeezerURL(string url, EntityType type, long id)
     /// </summary>
     /// <param name="client">The DeezerClient to use when contacting the API. No ARL is necessary.</param>
     /// <returns>A possibly null string with the title of the entity.</returns>
-    private async Task<string?> GetTitle(DeezerClient client)
+    private async Task<string?> GetTitle(DeezerClient client, CancellationToken token = default)
     {
         long id = Id;
         switch (EntityType)
         {
             case EntityType.Track:
                 {
-                    var data = await client.PublicApi.GetTrack(id);
+                    var data = await client.PublicApi.GetTrack(id, token);
                     return data["title"]!.ToString();
                 }
             case EntityType.Album:
                 {
-                    var data = await client.PublicApi.GetAlbum(id);
+                    var data = await client.PublicApi.GetAlbum(id, token: token);
                     return data["title"]!.ToString();
                 }
             case EntityType.Artist:
             case EntityType.ArtistTop:
                 {
-                    var data = await client.PublicApi.GetArtist(id);
+                    var data = await client.PublicApi.GetArtist(id, token);
                     return data["name"]!.ToString();
                 }
             case EntityType.Playlist:
                 {
-                    var data = await client.PublicApi.GetPlaylist(id);
+                    var data = await client.PublicApi.GetPlaylist(id, token);
                     return data["title"]!.ToString();
                 }
             default:
