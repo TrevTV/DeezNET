@@ -28,15 +28,15 @@ public class Downloader
     /// <param name="trackId">The track ID to base metadata on.</param>
     /// <param name="trackData">The track byte data to apply the metadata to.</param>
     /// <returns>The modified track data</returns>
-    public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData, int coverResolution = 512)
+    public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData, int coverResolution = 512, CancellationToken token = default)
     {
-        JToken page = await _gw.GetTrackPage(trackId);
+        JToken page = await _gw.GetTrackPage(trackId, token);
         long albumId = long.Parse(page["DATA"]!["ALB_ID"]!.ToString());
-        JToken albumPage = await _gw.GetAlbumPage(albumId);
-        JToken publicAlbum = await _publicApi.GetAlbum(albumId);
+        JToken albumPage = await _gw.GetAlbumPage(albumId, token);
+        JToken publicAlbum = await _publicApi.GetAlbum(albumId, token: token);
 
         byte[]? albumArt = null;
-        try { albumArt = await GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), coverResolution); } catch (UnavailableArtException) { }
+        try { albumArt = await GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), coverResolution, token); } catch (UnavailableArtException) { }
 
         string ext = Enumerable.SequenceEqual(trackData[0..4], FLAC_MAGIC) ? ".flac" : ".mp3";
 
@@ -73,22 +73,22 @@ public class Downloader
     /// <param name="fallback">The secondary bitrate choice if the preferred is unavailable.</param>
     /// <returns>The raw track data.</returns>
     /// <exception cref="NoSourcesAvailableException"></exception>
-    public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate, Bitrate? fallback = null)
+    public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate, Bitrate? fallback = null, CancellationToken token = default)
     {
-        JToken page = await _gw.GetTrackPage(trackId);
-        TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate);
+        JToken page = await _gw.GetTrackPage(trackId, token);
+        TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate, token);
 
         Uri? encryptedUri = urls.Data.FirstOrDefault()?.Media.FirstOrDefault()?.Sources.FirstOrDefault()?.Url;
         if (encryptedUri == null)
         {
             if (fallback != null)
-                return await GetRawTrackBytes(trackId, fallback.Value);
+                return await GetRawTrackBytes(trackId, fallback.Value, token: token);
             throw new NoSourcesAvailableException($"Track ID {trackId} has no available media sources for bitrate {bitrate}.");
         }
 
         HttpRequestMessage message = new(HttpMethod.Get, encryptedUri);
-        HttpResponseMessage response = await _client.SendAsync(message);
-        Stream stream = await response.Content.ReadAsStreamAsync();
+        HttpResponseMessage response = await _client.SendAsync(message, token);
+        Stream stream = await response.Content.ReadAsStreamAsync(token);
 
         MemoryStream outStream = new();
 
@@ -107,17 +107,17 @@ public class Downloader
     /// <param name="resolution">The resolution for the image. Unavailable sizes will throw an UnavailableArtException.</param>
     /// <returns>The byte data of the art.</returns>
     /// <exception cref="UnavailableArtException">Occurs when the given art ID or resolution is unavailable.</exception>
-    public async Task<byte[]> GetArtBytes(string id, int resolution)
+    public async Task<byte[]> GetArtBytes(string id, int resolution, CancellationToken token = default)
     {
         HttpRequestMessage message = new(HttpMethod.Get, GetCDNUrl(id, resolution));
-        HttpResponseMessage response = await _client.SendAsync(message);
+        HttpResponseMessage response = await _client.SendAsync(message, token);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             throw new UnavailableArtException($"The art with {id} with resolution {resolution} is unavailable.");
         }
 
-        return await response.Content.ReadAsByteArrayAsync();
+        return await response.Content.ReadAsByteArrayAsync(token);
     }
 
     /// <summary>
@@ -147,11 +147,11 @@ public class Downloader
         return string.Format(CDN_TEMPLATE, id, resolution);
     }
 
-    private async Task<TrackUrls> GetTrackUrl(string token, Bitrate bitrate)
+    private async Task<TrackUrls> GetTrackUrl(string token, Bitrate bitrate, CancellationToken cancelToken = default)
     {
         // with the order of this being called, this should never really be needed, but it ensures safety
         if (_gw.ActiveUserData == null)
-            await _gw.SetToken();
+            await _gw.SetToken(cancelToken);
 
         GetUrlRequestBody reqData = new()
         {
@@ -183,9 +183,9 @@ public class Downloader
 
         request.Headers.Add("Cookie", "arl=" + _gw._arl);
 
-        HttpResponseMessage response = await _client.SendAsync(request);
+        HttpResponseMessage response = await _client.SendAsync(request, cancelToken);
 
-        string resp = await response.Content.ReadAsStringAsync();
+        string resp = await response.Content.ReadAsStringAsync(cancelToken);
         JObject json = JObject.Parse(resp);
 
         JToken? errors = json["errors"];
