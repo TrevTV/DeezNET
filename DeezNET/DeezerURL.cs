@@ -160,7 +160,7 @@ public class DeezerURL(string url, EntityType type, long id)
     /// <param name="client">The DeezerClient to use when contacting the API. No ARL is necessary.</param>
     /// <param name="resolution">The resolution to use in the returned cover URL.</param>
     /// <returns>A possibly null URL to the entity's cover.</returns>
-    private async Task<string?> GetCoverUrl(DeezerClient client, int resolution, CancellationToken token = default)
+    public async Task<string?> GetCoverUrl(DeezerClient client, int resolution, CancellationToken token = default)
     {
         long id = Id;
         switch (EntityType)
@@ -196,7 +196,7 @@ public class DeezerURL(string url, EntityType type, long id)
     /// </summary>
     /// <param name="client">The DeezerClient to use when contacting the API. No ARL is necessary.</param>
     /// <returns>A possibly null string with the title of the entity.</returns>
-    private async Task<string?> GetTitle(DeezerClient client, CancellationToken token = default)
+    public async Task<string?> GetTitle(DeezerClient client, CancellationToken token = default)
     {
         long id = Id;
         switch (EntityType)
