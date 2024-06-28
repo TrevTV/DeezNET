@@ -25,7 +25,7 @@ public class DeezerURL(string url, EntityType type, long id)
     /// </summary>
     public long Id { get; init; } = id;
 
-    private static HttpClient _httpClient = new(new HttpClientHandler()
+    private static readonly HttpClient _httpClient = new(new HttpClientHandler()
     {
         AllowAutoRedirect = false,
     });
@@ -120,10 +120,7 @@ public class DeezerURL(string url, EntityType type, long id)
         HttpResponseMessage resp = _httpClient.Send(req);
 
         string? target = resp.StatusCode == System.Net.HttpStatusCode.Redirect ? resp.Headers.Location?.OriginalString : null;
-        if (target == null)
-            throw new InvalidURLException($"{url} did not provide a redirect Location header.");
-
-        return target!;
+        return target ?? throw new InvalidURLException($"{url} did not provide a redirect Location header.");
     }
 
     /// <summary>

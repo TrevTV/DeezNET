@@ -15,7 +15,7 @@ public class PublicApi
         _client = client;
     }
 
-    private HttpClient _client;
+    private readonly HttpClient _client;
 
     public async Task<JToken> GetAlbum(long albumId, int index = 0, int limit = -1, CancellationToken token = default) => await Call($"album/{albumId}", new()
     {
@@ -291,7 +291,7 @@ public class PublicApi
         ["limit"] = limit.ToString()
     }, token);
 
-    private string GenerateAdvancedSearchQuery(string? artist = null, string? album = null, string? track = null, string? label = null, int? durMin = null, int? durMax = null, int? bpmMin = null, int? bpmMax = null)
+    private static string GenerateAdvancedSearchQuery(string? artist = null, string? album = null, string? track = null, string? label = null, int? durMin = null, int? durMax = null, int? bpmMin = null, int? bpmMax = null)
     {
         StringBuilder query = new();
         if (artist != null)
@@ -321,7 +321,7 @@ public class PublicApi
         return query.ToString().Trim();
     }
 
-    private Dictionary<string, string> GenerateSearchArgs(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
+    private static Dictionary<string, string> GenerateSearchArgs(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25)
     {
         Dictionary<string, string> args = new()
         {
@@ -340,28 +340,28 @@ public class PublicApi
     }
 
     public async Task<JToken> Search(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Call("search", GenerateSearchArgs(query, strict, order, index, limit), token);
+        => await Call("search", PublicApi.GenerateSearchArgs(query, strict, order, index, limit), token);
 
     public async Task<JToken> SearchAdvanced(string? artist = null, string? album = null, string? track = null, string? label = null, int? durMin = null, int? durMax = null, int? bpmMin = null, int? bpmMax = null, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Search(GenerateAdvancedSearchQuery(artist, album, track, label, durMin, durMax, bpmMin, bpmMax), strict, order, index, limit, token);
+        => await Search(PublicApi.GenerateAdvancedSearchQuery(artist, album, track, label, durMin, durMax, bpmMin, bpmMax), strict, order, index, limit, token);
 
     public async Task<JToken> SearchAlbum(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Call("search/album", GenerateSearchArgs(query, strict, order, index, limit), token);
+        => await Call("search/album", PublicApi.GenerateSearchArgs(query, strict, order, index, limit), token);
 
     public async Task<JToken> SearchArtist(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Call("search/artist", GenerateSearchArgs(query, strict, order, index, limit), token);
+        => await Call("search/artist", PublicApi.GenerateSearchArgs(query, strict, order, index, limit), token);
 
     public async Task<JToken> SearchPlaylist(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Call("search/playlist", GenerateSearchArgs(query, strict, order, index, limit), token);
+        => await Call("search/playlist", PublicApi.GenerateSearchArgs(query, strict, order, index, limit), token);
 
     public async Task<JToken> SearchRadio(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Call("search/radio", GenerateSearchArgs(query, strict, order, index, limit), token);
+        => await Call("search/radio", PublicApi.GenerateSearchArgs(query, strict, order, index, limit), token);
 
     public async Task<JToken> SearchTrack(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Call("search/track", GenerateSearchArgs(query, strict, order, index, limit), token);
+        => await Call("search/track", PublicApi.GenerateSearchArgs(query, strict, order, index, limit), token);
 
     public async Task<JToken> SearchUser(string query, bool strict = false, SearchOrder? order = null, int index = 0, int limit = 25, CancellationToken token = default)
-        => await Call("search/user", GenerateSearchArgs(query, strict, order, index, limit), token);
+        => await Call("search/user", PublicApi.GenerateSearchArgs(query, strict, order, index, limit), token);
 
     private async Task<JToken> Call(string method, Dictionary<string, string>? parameters = null, CancellationToken token = default)
     {
@@ -401,21 +401,21 @@ public class PublicApi
                             return await Call(method, parameters, token);
                         }
                     case 100:
-                        throw new ItemsLimitExceededException(message == null ? "" : message);
+                        throw new ItemsLimitExceededException(message ?? "");
                     case 200:
-                        throw new PermissionException(message == null ? "" : message);
+                        throw new PermissionException(message ?? "");
                     case 300:
-                        throw new InvalidTokenException(message == null ? "" : message);
+                        throw new InvalidTokenException(message ?? "");
                     case 500:
-                        throw new WrongParameterException(message == null ? "" : message);
+                        throw new WrongParameterException(message ?? "");
                     case 501:
-                        throw new MissingParameterException(message == null ? "" : message);
+                        throw new MissingParameterException(message ?? "");
                     case 600:
-                        throw new InvalidQueryException(message == null ? "" : message);
+                        throw new InvalidQueryException(message ?? "");
                     case 800:
-                        throw new Exceptions.DataException(message == null ? "" : message);
+                        throw new Exceptions.DataException(message ?? "");
                     case 901:
-                        throw new IndividualAccountChangedNotAllowedException(message == null ? "" : message);
+                        throw new IndividualAccountChangedNotAllowedException(message ?? "");
                 }
             }
 

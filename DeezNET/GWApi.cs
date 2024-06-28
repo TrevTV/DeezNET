@@ -19,7 +19,7 @@ public class GWApi
 
     internal string _arl;
     internal string _apiToken;
-    private HttpClient _client;
+    private readonly HttpClient _client;
     private JToken? _activeUserData;
 
     internal async Task SetToken()

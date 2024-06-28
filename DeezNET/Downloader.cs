@@ -15,9 +15,9 @@ public class Downloader
         _publicApi = publicApi;
     }
 
-    private HttpClient _client;
-    private GWApi _gw;
-    private PublicApi _publicApi;
+    private readonly HttpClient _client;
+    private readonly GWApi _gw;
+    private readonly PublicApi _publicApi;
 
     internal const string CDN_TEMPLATE = "https://e-cdn-images.dzcdn.net/images/cover/{0}/{1}x{1}-000000-80-0-0.jpg";
     private readonly byte[] FLAC_MAGIC = "fLaC"u8.ToArray();
