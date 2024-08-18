@@ -11,7 +11,8 @@ public class DeezerClient
     {
         _arl = "";
 
-        _client = new HttpClient();
+        _clientHandler = new() { CookieContainer = new() };
+        _client = new HttpClient(_clientHandler);
         _client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
 
         _gwApi = new(_client, _arl);
@@ -42,10 +43,13 @@ public class DeezerClient
     public GWApi GWApi { get => _gwApi; }
     public PublicApi PublicApi { get => _publicApi; }
     public string ActiveARL { get => _arl; }
+    public string SID { get => _clientHandler.CookieContainer.GetCookies(_deezerUri).FirstOrDefault(c => c.Name == "sid")?.Value ?? ""; }
 
     private Downloader _downloader;
     private HttpClient _client;
     private GWApi _gwApi;
     private PublicApi _publicApi;
     private string _arl;
+    private HttpClientHandler _clientHandler;
+    private readonly Uri _deezerUri = new("https://deezer.com");
 }
