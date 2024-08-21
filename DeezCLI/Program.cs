@@ -34,6 +34,12 @@ public class DownloadCommand : ICommand
     [CommandOption("output", 'o', Description = "The directory to save downloaded media to.")]
     public string OutputDir { get; init; } = Environment.CurrentDirectory;
 
+    [CommandOption("add-sync-lyrics", 'L', Description = "Specifies whether to add a synced lyrics file to the download directory.")]
+    public bool SyncLyrics { get; init; } = false;
+
+    [CommandOption("add-lrclib-lyrics", 'B', Description = "Specifies whether to fetch lyrics from lrcget if available.")]
+    public bool LrcLibLyrics { get; init; } = false;
+
     [CommandOption("arl", 'a', Description = "The account ARL to download with. A paid plan allows for higher quality downloads. Some regions do not have full tracks available without a premium account.")]
     public string ARL { get; init; } = "";
 
@@ -98,6 +104,7 @@ public class DownloadCommand : ICommand
         string songTitle = page["DATA"]!["SNG_TITLE"]!.ToString();
         string artistName = page["DATA"]!["ART_NAME"]!.ToString();
         string albumTitle = page["DATA"]!["ALB_TITLE"]!.ToString();
+        int duration = page["DATA"]!["DURATION"]!.Value<int>();
 
         console.Write(new Rule($"[yellow]Track[/] {track} [yellow][/]").Justify(Justify.Center));
         console.MarkupLine($"[bold yellow]TITLE:[/] {songTitle}");
@@ -105,10 +112,34 @@ public class DownloadCommand : ICommand
         console.MarkupLine($"[bold yellow]ALBUM:[/] {albumTitle}");
         console.Write(new Rule());
 
-
         byte[] trackData = await client.Downloader.GetRawTrackBytes(track, PreferredBitrate, Downloader.GetLowerFallbackBitrate(PreferredBitrate));
+
+        string plainLyrics = string.Empty;
+        List<SyncLyrics>? syncLyrics = null;
+
+        var lyrics = await client.Downloader.FetchLyricsFromDeezer(track);
+        if (lyrics.HasValue)
+        {
+            plainLyrics = lyrics.Value.plainLyrics;
+
+            if (SyncLyrics)
+                syncLyrics = lyrics.Value.syncLyrics;
+        }
+
+        if (LrcLibLyrics && (string.IsNullOrWhiteSpace(plainLyrics) || (SyncLyrics && (syncLyrics?.Any() ?? false == false))))
+        {
+            lyrics = await client.Downloader.FetchLyricsFromLRCLIB("lrclib.net", songTitle, artistName, albumTitle, duration);
+            if (lyrics.HasValue)
+            {
+                if (string.IsNullOrWhiteSpace(plainLyrics))
+                    plainLyrics = lyrics.Value.plainLyrics;
+                if (SyncLyrics && (syncLyrics?.Any() ?? false == false))
+                    syncLyrics = lyrics.Value.syncLyrics;
+            }
+        }
+
         if (Metadata)
-            trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData);
+            trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData, 512, plainLyrics);
 
         string outPath = Path.Combine(OutputDir, GetFilledTemplate(FolderTemplate, page, albumPage));
         if (!Directory.Exists(outPath))
@@ -125,6 +156,9 @@ public class DownloadCommand : ICommand
         }
         catch (UnavailableArtException) { }
 
+        if (syncLyrics != null)
+            await CreateLrcFile(Path.Combine(outPath, GetFilledTemplate(FileTemplate, page, albumPage, true)), syncLyrics);
+
         outPath = Path.Combine(outPath, GetFilledTemplate(FileTemplate, page, albumPage));
 
         await File.WriteAllBytesAsync(outPath, trackData);
@@ -132,7 +166,7 @@ public class DownloadCommand : ICommand
         console.MarkupLine($"[yellow][[#]] Track[/] {track} [yellow]downloaded.[/]");
     }
 
-    private string GetFilledTemplate(string template, JToken page, JToken albumPage)
+    private string GetFilledTemplate(string template, JToken page, JToken albumPage, bool lrc = false)
     {
         StringBuilder t = new(template);
         ReplaceC("%title%", page["DATA"]!["SNG_TITLE"]!.ToString());
@@ -146,8 +180,11 @@ public class DownloadCommand : ICommand
         ReplaceC("%trackid%", page["DATA"]!["SNG_ID"]!.ToString());
         ReplaceC("%albumid%", page["DATA"]!["ALB_ID"]!.ToString());
         ReplaceC("%artistid%", page["DATA"]!["ART_ID"]!.ToString());
-        
-        t.Replace("%ext%", PreferredBitrate == Bitrate.FLAC ? "flac" : "mp3");
+
+        if (!lrc)
+            t.Replace("%ext%", PreferredBitrate == Bitrate.FLAC ? "flac" : "mp3");
+        else
+            t.Replace("%ext%", "lrc");
         DateTime releaseDate = DateTime.Parse(page["DATA"]!["PHYSICAL_RELEASE_DATE"]!.ToString());
         t.Replace("%year%", releaseDate.Year.ToString());
         return t.ToString();
@@ -156,6 +193,24 @@ public class DownloadCommand : ICommand
         {
             t.Replace(o, CleanPath(r));
         }
+    }
+
+    /// <summary>
+    /// Creates an LRC file for synchronized lyrics.
+    /// </summary>
+    /// <param name="lrcFilePath">The path to save the LRC file.</param>
+    /// <param name="syncLyrics">The list of synchronized lyrics.</param>
+    public async Task CreateLrcFile(string lrcFilePath, List<SyncLyrics> syncLyrics)
+    {
+        StringBuilder lrcContent = new();
+        foreach (var lyric in syncLyrics)
+        {
+            if (!string.IsNullOrEmpty(lyric.LrcTimestamp) && !string.IsNullOrEmpty(lyric.Line))
+            {
+                lrcContent.AppendLine($"{lyric.LrcTimestamp} {lyric.Line}");
+            }
+        }
+        await File.WriteAllTextAsync(lrcFilePath, lrcContent.ToString());
     }
 
     private static string CleanPath(string str)
