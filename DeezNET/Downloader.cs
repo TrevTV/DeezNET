@@ -1,8 +1,9 @@
 ﻿using DeezNET.Data;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using DeezNET.Metadata;
 using DeezNET.Exceptions;
+using DeezNET.Metadata;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
 
 namespace DeezNET;
 
@@ -28,7 +29,7 @@ public class Downloader
     /// <param name="trackId">The track ID to base metadata on.</param>
     /// <param name="trackData">The track byte data to apply the metadata to.</param>
     /// <returns>The modified track data</returns>
-    public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData, int coverResolution = 512, CancellationToken token = default)
+    public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData, int coverResolution = 512, string lyrics = "", CancellationToken token = default)
     {
         JToken page = await _gw.GetTrackPage(trackId, token);
         long albumId = long.Parse(page["DATA"]!["ALB_ID"]!.ToString());
@@ -56,6 +57,8 @@ public class Downloader
         if (albumArt != null)
             track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
 
+        track.Tag.Lyrics = lyrics;
+
         track.Save();
 
         byte[] attached = abstraction.MemoryStream.ToArray();
@@ -64,6 +67,68 @@ public class Downloader
         track.Dispose();
         return attached;
     }
+
+    /// <summary>
+    /// Fetches lyrics from Deezer.
+    /// </summary>
+    /// <param name="trackId">The track ID to get lyrics for.</param>=
+    /// <returns>A tuple containing plain lyrics and synchronized lyrics.</returns>
+    public async Task<(string plainLyrics, List<SyncLyrics>? syncLyrics)?> FetchLyricsFromDeezer(long trackId, CancellationToken token = default)
+    {
+        try
+        {
+            JToken lyricsPage = await _gw.GetTrackLyrics(trackId, token);
+            if (lyricsPage != null)
+                return (lyricsPage["LYRICS_TEXT"]?.ToString() ?? string.Empty, lyricsPage["LYRICS_SYNC_JSON"]?.ToObject<List<SyncLyrics>>());
+        }
+        catch (Exception) { }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Fetches lyrics from LRCLIB.
+    /// </summary>
+    /// <param name="trackName">The title of the track.</param>
+    /// <param name="artistName">The name of the artist.</param>
+    /// <param name="albumName">The name of the album.</param>
+    /// <param name="duration">The duration of the track in seconds.</param>
+    /// <returns>A tuple containing plain lyrics and synchronized lyrics.</returns>
+    public async Task<(string plainLyrics, List<SyncLyrics>? syncLyrics)?> FetchLyricsFromLRCLIB(string instance, string trackName, string artistName, string albumName, int duration, CancellationToken token = default)
+    {
+        var requestUrl = $"https://{instance}/api/get?artist_name={Uri.EscapeDataString(artistName)}&track_name={Uri.EscapeDataString(trackName)}&album_name={Uri.EscapeDataString(albumName)}&duration={duration}";
+        var response = await _client.GetAsync(requestUrl, token);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            var json = JObject.Parse(content);
+            return (json["plainLyrics"]?.ToString() ?? string.Empty, ParseSyncedLyrics(json["syncedLyrics"]?.ToString() ?? string.Empty)); ;
+        }
+
+        return null;
+    }
+
+    private List<SyncLyrics> ParseSyncedLyrics(string syncedLyrics)
+    {
+        var lyrics = new List<SyncLyrics>();
+        var lines = syncedLyrics.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var line in lines)
+        {
+            var match = Regex.Match(line, @"\[(\d{2}:\d{2}\.\d{2})\](.*)");
+            if (match.Success)
+            {
+                var timestamp = match.Groups[1].Value;
+                var text = match.Groups[2].Value.Trim();
+                var milliseconds = TimeSpan.ParseExact(timestamp, "mm\\:ss\\.ff", null).TotalMilliseconds;
+                lyrics.Add(new SyncLyrics { LrcTimestamp = $"[{timestamp}]", Line = text, Milliseconds = milliseconds.ToString() });
+            }
+        }
+
+        return lyrics;
+    }
+
 
     /// <summary>
     /// Downloads and decrypts track data for a given ID and bitrate.
