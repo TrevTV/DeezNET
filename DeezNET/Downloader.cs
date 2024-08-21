@@ -68,20 +68,20 @@ public class Downloader
         return attached;
     }
 
-
+    /// <summary>
+    /// Fetches lyrics from Deezer.
+    /// </summary>
+    /// <param name="trackId">The track ID to get lyrics for.</param>=
+    /// <returns>A tuple containing plain lyrics and synchronized lyrics.</returns>
     public async Task<(string plainLyrics, List<SyncLyrics>? syncLyrics)?> FetchLyricsFromDeezer(long trackId, CancellationToken token = default)
     {
         try
         {
-
             JToken lyricsPage = await _gw.GetTrackLyrics(trackId, token);
             if (lyricsPage != null)
                 return (lyricsPage["LYRICS_TEXT"]?.ToString() ?? string.Empty, lyricsPage["LYRICS_SYNC_JSON"]?.ToObject<List<SyncLyrics>>());
         }
-        catch (Exception)
-        {
-
-        }
+        catch (Exception) { }
 
         return null;
     }
@@ -94,10 +94,10 @@ public class Downloader
     /// <param name="albumName">The name of the album.</param>
     /// <param name="duration">The duration of the track in seconds.</param>
     /// <returns>A tuple containing plain lyrics and synchronized lyrics.</returns>
-    public async Task<(string plainLyrics, List<SyncLyrics>? syncLyrics)?> FetchLyricsFromLRCLIB(string instance, string trackName, string artistName, string albumName, int duration)
+    public async Task<(string plainLyrics, List<SyncLyrics>? syncLyrics)?> FetchLyricsFromLRCLIB(string instance, string trackName, string artistName, string albumName, int duration, CancellationToken token = default)
     {
         var requestUrl = $"https://{instance}/api/get?artist_name={Uri.EscapeDataString(artistName)}&track_name={Uri.EscapeDataString(trackName)}&album_name={Uri.EscapeDataString(albumName)}&duration={duration}";
-        var response = await _client.GetAsync(requestUrl);
+        var response = await _client.GetAsync(requestUrl, token);
 
         if (response.IsSuccessStatusCode)
         {
@@ -122,7 +122,7 @@ public class Downloader
                 var timestamp = match.Groups[1].Value;
                 var text = match.Groups[2].Value.Trim();
                 var milliseconds = TimeSpan.ParseExact(timestamp, "mm\\:ss\\.ff", null).TotalMilliseconds;
-                lyrics.Add(new SyncLyrics { LrcTimestamp = timestamp, Line = text, Milliseconds = milliseconds.ToString() });
+                lyrics.Add(new SyncLyrics { LrcTimestamp = $"[{timestamp}]", Line = text, Milliseconds = milliseconds.ToString() });
             }
         }
 

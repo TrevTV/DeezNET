@@ -31,14 +31,14 @@ public class DownloadCommand : ICommand
     [CommandOption("add-metadata", 'm', Description = "Whether to attach metadata to the downloaded audio file.")]
     public bool Metadata { get; init; } = true;
 
-    [CommandOption("output", 'o', Description = "The directory to save downloaded media to.")]
-    public string OutputDir { get; init; } = Environment.CurrentDirectory;
-
     [CommandOption("add-sync-lyrics", 'L', Description = "Specifies whether to add a synced lyrics file to the download directory.")]
     public bool SyncLyrics { get; init; } = false;
 
-    [CommandOption("add-lrclib-lyrics", 'B', Description = "Specifies whether to fetch lyrics from lrcget if available.")]
+    [CommandOption("add-lrclib-lyrics", 'B', Description = "Specifies whether to fetch lyrics from LRCLIB if available.")]
     public bool LrcLibLyrics { get; init; } = false;
+
+    [CommandOption("output", 'o', Description = "The directory to save downloaded media to.")]
+    public string OutputDir { get; init; } = Environment.CurrentDirectory;
 
     [CommandOption("arl", 'a', Description = "The account ARL to download with. A paid plan allows for higher quality downloads. Some regions do not have full tracks available without a premium account.")]
     public string ARL { get; init; } = "";
@@ -126,17 +126,23 @@ public class DownloadCommand : ICommand
                 syncLyrics = lyrics.Value.syncLyrics;
         }
 
-        if (LrcLibLyrics && (string.IsNullOrWhiteSpace(plainLyrics) || (SyncLyrics && (syncLyrics?.Any() ?? false == false))))
+        if (LrcLibLyrics && (string.IsNullOrWhiteSpace(plainLyrics) || (SyncLyrics && !(syncLyrics?.Any() ?? false))))
         {
             lyrics = await client.Downloader.FetchLyricsFromLRCLIB("lrclib.net", songTitle, artistName, albumTitle, duration);
             if (lyrics.HasValue)
             {
                 if (string.IsNullOrWhiteSpace(plainLyrics))
                     plainLyrics = lyrics.Value.plainLyrics;
-                if (SyncLyrics && (syncLyrics?.Any() ?? false == false))
+                if (SyncLyrics && !(syncLyrics?.Any() ?? false))
                     syncLyrics = lyrics.Value.syncLyrics;
             }
         }
+
+        if (string.IsNullOrWhiteSpace(plainLyrics))
+            console.MarkupLine($"[yellow]No plain lyrics for track {songTitle} ({track}) were available.[/]");
+
+        if (!(syncLyrics?.Any() ?? false))
+            console.MarkupLine($"[yellow]No synced lyrics for track {songTitle} ({track}) were available.[/]");
 
         if (Metadata)
             trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData, 512, plainLyrics);
