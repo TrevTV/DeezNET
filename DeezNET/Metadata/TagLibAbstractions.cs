@@ -26,3 +26,25 @@ internal class FileBytesAbstraction : TagLib.File.IFileAbstraction
 
     public MemoryStream MemoryStream { get; private set; }
 }
+
+internal class StreamAbstraction : TagLib.File.IFileAbstraction
+{
+    public StreamAbstraction(string name, Stream stream)
+    {
+        Name = name;
+        Stream = stream;
+    }
+
+    public void CloseStream(Stream stream)
+    {
+        // shared read/write stream so we don't want it to close it when switching AccessMode (see TagLib.NonContainer.File.AccessMode for more context)
+    }
+
+    public string Name { get; private set; }
+
+    public Stream ReadStream { get => Stream; }
+
+    public Stream WriteStream { get => Stream; }
+
+    public Stream Stream { get; private set; }
+}

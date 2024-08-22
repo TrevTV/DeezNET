@@ -24,6 +24,78 @@ public class Downloader
     private readonly byte[] FLAC_MAGIC = "fLaC"u8.ToArray();
 
     /// <summary>
+    /// Downloads and decrypts track data for a given ID and bitrate.
+    /// </summary>
+    /// <param name="trackId">The track ID to download.</param>
+    /// <param name="bitrate">The preferred bitrate to download.</param>
+    /// <param name="fallback">The secondary bitrate choice if the preferred is unavailable.</param>
+    /// <returns>The raw track data as a stream.</returns>
+    public async Task<Stream> GetRawTrackStream(long trackId, Bitrate bitrate, Bitrate? fallback = null, CancellationToken token = default)
+    {
+        MemoryStream outStream = new();
+
+        var (stream, blowfishKey, isCrypted) = await GetEncryptedTrackData(trackId, bitrate, fallback, token);
+        Decryption.DecodeTrackStream(stream, outStream, isCrypted, blowfishKey);
+
+        stream.Dispose();
+
+        return outStream;
+    }
+
+    /// <summary>
+    /// Downloads and decrypts track data for a given ID and bitrate.
+    /// </summary>
+    /// <param name="trackId">The track ID to download.</param>
+    /// <param name="bitrate">The preferred bitrate to download.</param>
+    /// <param name="fallback">The secondary bitrate choice if the preferred is unavailable.</param>
+    /// <returns>The raw track data.</returns>
+    public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate, Bitrate? fallback = null, CancellationToken token = default)
+    {
+        using MemoryStream stream = (MemoryStream)await GetRawTrackStream(trackId, bitrate, fallback, token);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Downloads and decrypts track data for a given ID and bitrate to the given file path.
+    /// </summary>
+    /// <param name="trackId">The track ID to download.</param>
+    /// <param name="trackPath">The path to write the track to.</param>
+    /// <param name="bitrate">The preferred bitrate to download.</param>
+    /// <param name="fallback">The secondary bitrate choice if the preferred is unavailable.</param>
+    public async Task WriteRawTrackToFile(long trackId, string trackPath, Bitrate bitrate, Bitrate? fallback = null, CancellationToken token = default)
+    {
+        using FileStream fileStream = File.Open(trackPath, FileMode.Create);
+
+        var (stream, blowfishKey, isCrypted) = await GetEncryptedTrackData(trackId, bitrate, fallback, token);
+        Decryption.DecodeTrackStream(stream, fileStream, isCrypted, blowfishKey);
+
+        stream.Dispose();
+    }
+
+    /// <summary>
+    /// Applies ID3 metadata to the given stream.
+    /// </summary>
+    /// <param name="trackId">The track ID to base metadata on.</param>
+    /// <param name="trackStream">The track stream to apply the metadata to. Must be seekable.</param>
+    /// <returns>A new stream with the applied metadata.</returns>
+    public async Task<Stream> ApplyMetadataToTrackStream(long trackId, Stream trackStream, int coverResolution = 512, string lyrics = "", CancellationToken token = default)
+    {
+        byte[] magicBuffer = new byte[4];
+        await trackStream.ReadAsync(magicBuffer.AsMemory(0, 4), token);
+        string ext = Enumerable.SequenceEqual(magicBuffer, FLAC_MAGIC) ? ".flac" : ".mp3";
+
+        trackStream.Seek(0, SeekOrigin.Begin);
+
+        StreamAbstraction abstraction = new("track" + ext, trackStream);
+        using TagLib.File file = TagLib.File.Create(abstraction);
+        await ApplyMetadataToTagLibFile(file, trackId, coverResolution, lyrics, token);
+
+        trackStream.Seek(0, SeekOrigin.Begin);
+
+        return trackStream;
+    }
+
+    /// <summary>
     /// Applies ID3 metadata to the given byte array.
     /// </summary>
     /// <param name="trackId">The track ID to base metadata on.</param>
@@ -31,41 +103,27 @@ public class Downloader
     /// <returns>The modified track data</returns>
     public async Task<byte[]> ApplyMetadataToTrackBytes(long trackId, byte[] trackData, int coverResolution = 512, string lyrics = "", CancellationToken token = default)
     {
-        JToken page = await _gw.GetTrackPage(trackId, token);
-        long albumId = long.Parse(page["DATA"]!["ALB_ID"]!.ToString());
-        JToken albumPage = await _gw.GetAlbumPage(albumId, token);
-        JToken publicAlbum = await _publicApi.GetAlbum(albumId, token: token);
-
-        byte[]? albumArt = null;
-        try { albumArt = await GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), coverResolution, token); } catch (UnavailableArtException) { }
-
         string ext = Enumerable.SequenceEqual(trackData[0..4], FLAC_MAGIC) ? ".flac" : ".mp3";
 
         FileBytesAbstraction abstraction = new("track" + ext, trackData);
-        TagLib.File track = TagLib.File.Create(abstraction);
-        track.Tag.Title = page["DATA"]!["SNG_TITLE"]!.ToString();
-        track.Tag.Album = page["DATA"]!["ALB_TITLE"]!.ToString();
-        track.Tag.Performers = page["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString()).ToArray();
-        track.Tag.AlbumArtists = albumPage["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString()).ToArray();
-        DateTime releaseDate = DateTime.Parse(page["DATA"]!["PHYSICAL_RELEASE_DATE"]!.ToString());
-        track.Tag.Year = (uint)releaseDate.Year;
-        track.Tag.Track = uint.Parse(page["DATA"]!["TRACK_NUMBER"]!.ToString());
-        track.Tag.TrackCount = uint.Parse(albumPage["SONGS"]!["total"]!.ToString());
-        // i have yet to find an album without a genre attached, but this may still break at some point
-        track.Tag.Genres = publicAlbum["genres"]!["data"]!.Select(a => a["name"]!.ToString()).ToArray();
+        using TagLib.File file = TagLib.File.Create(abstraction);
+        await ApplyMetadataToTagLibFile(file, trackId, coverResolution, lyrics, token);
 
-        if (albumArt != null)
-            track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
+        byte[] finalData = abstraction.MemoryStream.ToArray();
+        await abstraction.MemoryStream.DisposeAsync();
+        return finalData;
+    }
 
-        track.Tag.Lyrics = lyrics;
-
-        track.Save();
-
-        byte[] attached = abstraction.MemoryStream.ToArray();
-
-        abstraction.MemoryStream.Dispose();
-        track.Dispose();
-        return attached;
+    /// <summary>
+    /// Applies ID3 metadata to the given file.
+    /// </summary>
+    /// <param name="trackId">The track ID to base metadata on.</param>
+    /// <param name="trackPath">The track path to apply the metadata to.</param>
+    /// <returns>The modified track data</returns>
+    public async Task ApplyMetadataToFile(long trackId, string trackPath, int coverResolution = 512, string lyrics = "", CancellationToken token = default)
+    {
+        using TagLib.File file = TagLib.File.Create(trackPath);
+        await ApplyMetadataToTagLibFile(file, trackId, coverResolution, lyrics, token);
     }
 
     /// <summary>
@@ -107,62 +165,6 @@ public class Downloader
         }
 
         return null;
-    }
-
-    private List<SyncLyrics> ParseSyncedLyrics(string syncedLyrics)
-    {
-        var lyrics = new List<SyncLyrics>();
-        var lines = syncedLyrics.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var line in lines)
-        {
-            var match = Regex.Match(line, @"\[(\d{2}:\d{2}\.\d{2})\](.*)");
-            if (match.Success)
-            {
-                var timestamp = match.Groups[1].Value;
-                var text = match.Groups[2].Value.Trim();
-                var milliseconds = TimeSpan.ParseExact(timestamp, "mm\\:ss\\.ff", null).TotalMilliseconds;
-                lyrics.Add(new SyncLyrics { LrcTimestamp = $"[{timestamp}]", Line = text, Milliseconds = milliseconds.ToString() });
-            }
-        }
-
-        return lyrics;
-    }
-
-
-    /// <summary>
-    /// Downloads and decrypts track data for a given ID and bitrate.
-    /// </summary>
-    /// <param name="trackId">The track ID to download.</param>
-    /// <param name="bitrate">The preferred bitrate to download.</param>
-    /// <param name="fallback">The secondary bitrate choice if the preferred is unavailable.</param>
-    /// <returns>The raw track data.</returns>
-    /// <exception cref="NoSourcesAvailableException"></exception>
-    public async Task<byte[]> GetRawTrackBytes(long trackId, Bitrate bitrate, Bitrate? fallback = null, CancellationToken token = default)
-    {
-        JToken page = await _gw.GetTrackPage(trackId, token);
-        TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate, token);
-
-        Uri? encryptedUri = urls.Data.FirstOrDefault()?.Media.FirstOrDefault()?.Sources.FirstOrDefault()?.Url;
-        if (encryptedUri == null)
-        {
-            if (fallback != null)
-                return await GetRawTrackBytes(trackId, fallback.Value, token: token);
-            throw new NoSourcesAvailableException($"Track ID {trackId} has no available media sources for bitrate {bitrate}.");
-        }
-
-        HttpRequestMessage message = new(HttpMethod.Get, encryptedUri);
-        HttpResponseMessage response = await _client.SendAsync(message, token);
-        Stream stream = await response.Content.ReadAsStreamAsync(token);
-
-        MemoryStream outStream = new();
-
-        string blowfishKey = Decryption.GenerateBlowfishKey(trackId.ToString());
-        bool isCrypted = encryptedUri.ToString().Contains("/mobile/") || encryptedUri.ToString().Contains("/media/");
-
-        Decryption.DecodeTrackStream(stream, outStream, isCrypted, blowfishKey);
-
-        return outStream.ToArray();
     }
 
     /// <summary>
@@ -210,6 +212,29 @@ public class Downloader
     public static string GetCDNUrl(string id, int resolution)
     {
         return string.Format(CDN_TEMPLATE, id, resolution);
+    }
+
+    private async Task<(Stream stream, string blowfishKey, bool isCrypted)> GetEncryptedTrackData(long trackId, Bitrate bitrate, Bitrate? fallback = null, CancellationToken token = default)
+    {
+        JToken page = await _gw.GetTrackPage(trackId, token);
+        TrackUrls urls = await GetTrackUrl(page["DATA"]!["TRACK_TOKEN"]!.ToString(), bitrate, token);
+
+        Uri? encryptedUri = urls.Data.FirstOrDefault()?.Media.FirstOrDefault()?.Sources.FirstOrDefault()?.Url;
+        if (encryptedUri == null)
+        {
+            if (fallback != null)
+                return await GetEncryptedTrackData(trackId, fallback.Value, token: token);
+            throw new NoSourcesAvailableException($"Track ID {trackId} has no available media sources for bitrate {bitrate}.");
+        }
+
+        HttpRequestMessage message = new(HttpMethod.Get, encryptedUri);
+        HttpResponseMessage response = await _client.SendAsync(message, token);
+        Stream stream = await response.Content.ReadAsStreamAsync(token);
+
+        string blowfishKey = Decryption.GenerateBlowfishKey(trackId.ToString());
+        bool isCrypted = encryptedUri.ToString().Contains("/mobile/") || encryptedUri.ToString().Contains("/media/");
+
+        return (stream, blowfishKey, isCrypted);
     }
 
     private async Task<TrackUrls> GetTrackUrl(string token, Bitrate bitrate, CancellationToken cancelToken = default)
@@ -260,5 +285,54 @@ public class Downloader
         }
 
         return json.ToObject<TrackUrls>()!;
+    }
+
+    private async Task ApplyMetadataToTagLibFile(TagLib.File track, long trackId, int coverResolution = 512, string lyrics = "", CancellationToken token = default)
+    {
+        JToken page = await _gw.GetTrackPage(trackId, token);
+        long albumId = long.Parse(page["DATA"]!["ALB_ID"]!.ToString());
+        JToken albumPage = await _gw.GetAlbumPage(albumId, token);
+        JToken publicAlbum = await _publicApi.GetAlbum(albumId, token: token);
+
+        byte[]? albumArt = null;
+        try { albumArt = await GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), coverResolution, token); } catch (UnavailableArtException) { }
+
+        track.Tag.Title = page["DATA"]!["SNG_TITLE"]!.ToString();
+        track.Tag.Album = page["DATA"]!["ALB_TITLE"]!.ToString();
+        track.Tag.Performers = page["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString()).ToArray();
+        track.Tag.AlbumArtists = albumPage["DATA"]!["ARTISTS"]!.Select(a => a["ART_NAME"]!.ToString()).ToArray();
+        DateTime releaseDate = DateTime.Parse(page["DATA"]!["PHYSICAL_RELEASE_DATE"]!.ToString());
+        track.Tag.Year = (uint)releaseDate.Year;
+        track.Tag.Track = uint.Parse(page["DATA"]!["TRACK_NUMBER"]!.ToString());
+        track.Tag.TrackCount = uint.Parse(albumPage["SONGS"]!["total"]!.ToString());
+        // i have yet to find an album without a genre attached, but this may still break at some point
+        track.Tag.Genres = publicAlbum["genres"]!["data"]!.Select(a => a["name"]!.ToString()).ToArray();
+
+        if (albumArt != null)
+            track.Tag.Pictures = [new TagLib.Picture(new TagLib.ByteVector(albumArt))];
+
+        track.Tag.Lyrics = lyrics;
+
+        track.Save();
+    }
+
+    private List<SyncLyrics> ParseSyncedLyrics(string syncedLyrics)
+    {
+        var lyrics = new List<SyncLyrics>();
+        var lines = syncedLyrics.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var line in lines)
+        {
+            var match = Regex.Match(line, @"\[(\d{2}:\d{2}\.\d{2})\](.*)");
+            if (match.Success)
+            {
+                var timestamp = match.Groups[1].Value;
+                var text = match.Groups[2].Value.Trim();
+                var milliseconds = TimeSpan.ParseExact(timestamp, "mm\\:ss\\.ff", null).TotalMilliseconds;
+                lyrics.Add(new SyncLyrics { LrcTimestamp = $"[{timestamp}]", Line = text, Milliseconds = milliseconds.ToString() });
+            }
+        }
+
+        return lyrics;
     }
 }

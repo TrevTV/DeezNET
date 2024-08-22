@@ -82,6 +82,11 @@ public class DownloadCommand : ICommand
                     {
                         await DoDownload(ansiConsole, client, track);
                     }
+                    catch (Exception ex)
+                    {
+                        ansiConsole.MarkupLine("[red]Unhandled exception occurred when downloading track {0}.[/]", track);
+                        ansiConsole.WriteException(ex);
+                    }
                     finally
                     {
                         semaphore.Release();
@@ -112,7 +117,12 @@ public class DownloadCommand : ICommand
         console.MarkupLine($"[bold yellow]ALBUM:[/] {albumTitle}");
         console.Write(new Rule());
 
-        byte[] trackData = await client.Downloader.GetRawTrackBytes(track, PreferredBitrate, Downloader.GetLowerFallbackBitrate(PreferredBitrate));
+        string outPath = Path.Combine(OutputDir, GetFilledTemplate(FolderTemplate, page, albumPage), GetFilledTemplate(FileTemplate, page, albumPage));
+        string outDir = Path.GetDirectoryName(outPath)!;
+        if (!Directory.Exists(outDir))
+            Directory.CreateDirectory(outDir);
+
+        await client.Downloader.WriteRawTrackToFile(track, outPath, PreferredBitrate, Downloader.GetLowerFallbackBitrate(PreferredBitrate));
 
         string plainLyrics = string.Empty;
         List<SyncLyrics>? syncLyrics = null;
@@ -145,29 +155,24 @@ public class DownloadCommand : ICommand
             console.MarkupLine($"[yellow]No synced lyrics for track {songTitle} ({track}) were available.[/]");
 
         if (Metadata)
-            trackData = await client.Downloader.ApplyMetadataToTrackBytes(track, trackData, 512, plainLyrics);
-
-        string outPath = Path.Combine(OutputDir, GetFilledTemplate(FolderTemplate, page, albumPage));
-        if (!Directory.Exists(outPath))
-            Directory.CreateDirectory(outPath);
+             await client.Downloader.ApplyMetadataToFile(track, outPath, 512, plainLyrics);
 
         try
         {
-            string artOut = Path.Combine(outPath, "folder.jpg");
+            string artOut = Path.Combine(outDir, "folder.jpg");
             if (!File.Exists(artOut))
             {
                 byte[] bigArt = await client.Downloader.GetArtBytes(page["DATA"]!["ALB_PICTURE"]!.ToString(), 1024);
                 await File.WriteAllBytesAsync(artOut, bigArt);
             }
         }
-        catch (UnavailableArtException) { }
+        catch (UnavailableArtException)
+        {
+            console.MarkupLine($"[yellow]Artwork for track {songTitle} ({track}) was unavailable.[/]");
+        }
 
         if (syncLyrics != null)
-            await CreateLrcFile(Path.Combine(outPath, GetFilledTemplate(FileTemplate, page, albumPage, true)), syncLyrics);
-
-        outPath = Path.Combine(outPath, GetFilledTemplate(FileTemplate, page, albumPage));
-
-        await File.WriteAllBytesAsync(outPath, trackData);
+            await CreateLrcFile(Path.Combine(outDir, GetFilledTemplate(FileTemplate, page, albumPage, true)), syncLyrics);
 
         console.MarkupLine($"[yellow][[#]] Track[/] {track} [yellow]downloaded.[/]");
     }
