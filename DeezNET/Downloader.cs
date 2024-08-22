@@ -39,6 +39,7 @@ public class Downloader
 
         stream.Dispose();
 
+        outStream.Seek(0, SeekOrigin.Begin);
         return outStream;
     }
 
@@ -77,8 +78,7 @@ public class Downloader
     /// </summary>
     /// <param name="trackId">The track ID to base metadata on.</param>
     /// <param name="trackStream">The track stream to apply the metadata to. Must be seekable.</param>
-    /// <returns>A new stream with the applied metadata.</returns>
-    public async Task<Stream> ApplyMetadataToTrackStream(long trackId, Stream trackStream, int coverResolution = 512, string lyrics = "", CancellationToken token = default)
+    public async Task ApplyMetadataToTrackStream(long trackId, Stream trackStream, int coverResolution = 512, string lyrics = "", CancellationToken token = default)
     {
         byte[] magicBuffer = new byte[4];
         await trackStream.ReadAsync(magicBuffer.AsMemory(0, 4), token);
@@ -91,8 +91,6 @@ public class Downloader
         await ApplyMetadataToTagLibFile(file, trackId, coverResolution, lyrics, token);
 
         trackStream.Seek(0, SeekOrigin.Begin);
-
-        return trackStream;
     }
 
     /// <summary>
