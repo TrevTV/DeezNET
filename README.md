@@ -83,7 +83,9 @@ PARAMETERS
 OPTIONS
   -b|--bitrate      The preferred bitrate when downloading. Falls back to a lower quality if unavailable. Choices: "MP3_128", "MP3_320", "FLAC". Default: "FLAC".
   -m|--add-metadata  Whether to attach metadata to the downloaded audio file. Default: "True".
-  -o|--output       The directory to save downloaded media to. Default: Current Working Directory.
+  -L|--add-sync-lyrics  Specifies whether to add a synced lyrics file to the download directory. Default: "False".
+  -B|--add-lrclib-lyrics  Specifies whether to fetch lyrics from LRCLIB if available. Default: "False".
+  -o|--output       The directory to save downloaded media to. Default: "E:\Projects\GitHub\DeezNET\DeezCLI\bin\Release\net8.0".
   -a|--arl          The account ARL to download with. A paid plan allows for higher quality downloads. Some regions do not have full tracks available without a premium account. Default: "".
   -l|--top-limit    The max amount of tracks to download. Only applicable when downloading an artist's top tracks. Default: "100".
   -c|--concurrent   The max amount of allowed concurrent track downloads. Default: "3".
