@@ -60,7 +60,7 @@ public class DeezerURL(string url, EntityType type, long id)
     /// <exception cref="InvalidURLException"></exception>
     public static DeezerURL Parse(string url)
     {
-        if (url.Contains("deezer.page.link"))
+        if (url.Contains("deezer.page.link") || url.Contains("dzr.page.link"))
             url = UnshortenURL(url);
 
         int paramStart = url.IndexOf('?');
