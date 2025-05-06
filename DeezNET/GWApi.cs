@@ -121,7 +121,7 @@ public class GWApi
         ["title"] = title,
         ["description"] = description,
         ["status"] = (int)status,
-        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString())))
+        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString(), 0)))
     }, token: token);
 
     public async Task<JToken> EditPlaylist(long playlistId, string title, PlaylistStatus status, string description, long[] trackIds, CancellationToken token = default) => await Call("playlist.update", new()
@@ -130,13 +130,13 @@ public class GWApi
         ["title"] = title,
         ["description"] = description,
         ["status"] = (int)status,
-        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString())))
+        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString(), 0)))
     }, token: token);
 
     public async Task<JToken> AddSongsToPlaylist(long playlistId, long[] trackIds, int offset = -1, CancellationToken token = default) => await Call("playlist.addSongs", new()
     {
         ["PLAYLIST_ID"] = playlistId,
-        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString()))),
+        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString(), 0))),
         ["offset"] = offset
     }, token: token);
 
@@ -145,7 +145,7 @@ public class GWApi
     public async Task<JToken> RemoveSongsFromPlaylist(long playlistId, long[] trackIds) => await Call("playlist.deleteSongs", new()
     {
         ["PLAYLIST_ID"] = playlistId,
-        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString()))),
+        ["songs"] = new JArray(trackIds.Select(t => new JArray(t.ToString(), 0))),
     });
 
     public async Task<JToken> RemoveSongFromPlaylist(long playlistId, long trackId, CancellationToken token = default) => await RemoveSongsFromPlaylist(playlistId, [trackId]);
